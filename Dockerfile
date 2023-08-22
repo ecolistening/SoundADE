@@ -20,5 +20,3 @@ COPY scripts/ /code/scripts/
 COPY src/soundade /code/src/soundade
 
 SHELL ["conda", "develop", "-n", "soundade", "/code/src"]
-
-ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "soundade", "python", "scripts/process_files.py"]

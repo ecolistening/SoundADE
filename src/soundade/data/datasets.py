@@ -1,21 +1,20 @@
+import dask.bag as db
 import logging
+import numpy as np
+import pandas as pd
 import re
+import soundfile as sf
+from dask import dataframe as dd
 from datetime import datetime
 from importlib.resources import files
 from pathlib import Path
+from soundade.audio.feature.vector import Features
 from typing import List, Iterable, Tuple, Dict
 
-import dask.bag as db
-import numpy as np
-import pandas as pd
-import soundfile as sf
-from dask import dataframe as dd
-
-from dac.audio.feature.vector import Features
+from soundade.data import channel1
 from soundade.data import create_file_load_dictionary, load_audio_from_path, extract_features_from_audio, \
     reformat_for_dataframe, power_spectra_from_audio, log_features, transform_features, extract_banded_audio, \
     remove_dc_offset, high_pass_filter, extract_scalar_features_from_audio
-from soundade.data import channel1
 from soundade.data import solartimes
 
 logging.basicConfig(level=logging.INFO)
@@ -344,7 +343,7 @@ class SoundingOutChorus(Dataset):
 
     @staticmethod
     def prefilter_file_dictionary(d: Dict) -> bool:
-        gdm_f = files('dac.data').joinpath('good_dates_and_mics.parquet')
+        gdm_f = files('ecolistening.data').joinpath('good_dates_and_mics.parquet')
         gdm = pd.read_parquet(gdm_f)
         gdm['date'] = gdm.date.dt.date
 
@@ -495,7 +494,6 @@ class ReefChorus(Dataset):
     @staticmethod
     def preprocess(b: db.Bag, save=None,
                    bands: Iterable[Tuple[int, int]] = [(50, 800), (2000, 7000), (50, 20000)]) -> db.Bag:
-
         b = b.map(remove_dc_offset)
 
         b = b.map(extract_banded_audio, bands=bands).flatten()
@@ -573,6 +571,7 @@ class ReefChorus(Dataset):
         return dataframe.loc[:, :filename_column].join(df.drop(columns=[0, 1, 2, 3, 4])).join(
             dataframe.loc[:, filename_column:].iloc[:, 1:])
 
+
 class Cairngorms(Dataset):
     @staticmethod
     def extract_features(b: db.Bag, frame: int, hop: int, n_fft: int, **kwargs) -> db.Bag:
@@ -580,7 +579,7 @@ class Cairngorms(Dataset):
         logging.info('Extracting Cairngorms Features')
         b = b.map(extract_scalar_features_from_audio, frame_length=frame, hop_length=hop, n_fft=n_fft, **kwargs)
         return b
-    
+
     @staticmethod
     def metadata(ddf: dd.DataFrame) -> dd.DataFrame:
         meta = pd.concat([ddf.dtypes.loc[:'path'], pd.Series({
@@ -598,7 +597,7 @@ class Cairngorms(Dataset):
     @staticmethod
     def filename_metadata(dataframe: pd.DataFrame, filename_column='path') -> pd.DataFrame:
         df = dataframe[filename_column].str.split('/', expand=True)
-        
+
         try:
             df['location'] = df.iloc[:, -3].str.split('_', expand=True).iloc[:, -1]
             df['timestamp'] = pd.to_datetime(df.iloc[:, -2], format='%Y%m%d_%H%M%S.WAV')
@@ -615,7 +614,7 @@ class Cairngorms(Dataset):
     def to_dataframe(b: db.Bag, data_keys: List = None, columns_key=None) -> dd.DataFrame:
         '''Override the default to_dataframe to return a single row from each bag.'''
         b = b.map(reformat_for_dataframe, data_keys=data_keys, columns_key=columns_key, scalar_values=True).flatten()
-        
+
         ddf = b.to_dataframe()
 
         return ddf

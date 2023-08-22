@@ -1,9 +1,8 @@
-import pandas as pd
-
 from pathlib import Path
 
-from astral import LocationInfo, Observer
-from astral.sun import sun, daylight
+import pandas as pd
+from astral import LocationInfo
+from astral.sun import sun
 
 locations_default = Path(__file__).parent / '../../../data/site_locations.parquet'
 

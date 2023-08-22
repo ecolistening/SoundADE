@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from dask_jobqueue import SGECluster
 from dask_jobqueue.core import Job
 from distributed import Scheduler

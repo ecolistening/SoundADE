@@ -1,16 +1,14 @@
+import itertools
 import logging
 from datetime import timedelta
-from pathlib import Path
 from typing import Dict, List, Iterable, Callable, Tuple
 
 import librosa
 import maad
 import numpy as np
 import scipy
-import itertools
-
-from dac.audio.feature.vector import Features
 from dac.audio.feature.scalar import Features as ScalarFeatures
+from dac.audio.feature.vector import Features
 from dac.audio.filter import dc_offset
 
 FRAME_LENGTH, HOP_LENGTH = 16000, 4000

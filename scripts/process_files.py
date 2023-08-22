@@ -5,7 +5,7 @@ from dask.distributed import Client
 
 from soundade.data.datasets import datasets, Dataset
 from soundade.hpc.arguments import DaskArgumentParser
-from soundade.hpc.cluster import AltairGridEngineCluster
+from soundade.hpc.cluster import clusters
 
 cfg.set({'distributed.scheduler.worker-ttl': None})
 
@@ -20,14 +20,14 @@ defaults = {
 }
 
 
-def main(indir=None, outfile=None, memory=64, cores=4, jobs=2,
+def main(cluster=None, indir=None, outfile=None, memory=64, cores=4, jobs=2,
          dataset=None, frame=0, hop=0, n_fft=0, npartitions=None,
          local=False, save_preprocessed=None,
          **kwargs):
     if not local:
         # Start cluster
-        cluster = AltairGridEngineCluster(cores=cores, memory=memory, queue='test.long',
-                                          name=None)  # .short', name=None)
+        cluster = clusters[cluster](cores=cores, memory=memory, queue='test.long',
+                                    name=None)  # .short', name=None)
         print(cluster.job_script())
         cluster.scale(jobs=jobs)
         client = Client(cluster)

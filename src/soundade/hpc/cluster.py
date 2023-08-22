@@ -1,3 +1,5 @@
+import os
+
 from dask_jobqueue import SGECluster
 from dask_jobqueue.core import Job
 from distributed import Scheduler
@@ -7,9 +9,33 @@ from distributed import Scheduler
 QUEUE_WALLTIMES = {
     'test.short': f'{2 * 60 * 60}',
     'test': f'{8 * 60 * 60}',
-    'test.long': f'680400', # {7.875 * 24 * 60 * 60}
+    'test.long': f'680400',  # {7.875 * 24 * 60 * 60}
     'verylong': f'{30 * 24 * 60 * 60}'
 }
+
+
+# TODO reimplement as factory? (https://realpython.com/factory-method-python/)
+
+
+# Adapted from https://arctraining.github.io/swd6_hpp/05_parallelisation.html#dask-jobqueue
+class ARCCluster(SGECluster):
+    def __init__(self, cores=1, walltime="00:01:00", memory=1, queue=None, **job_kwargs):
+        super().__init__(
+            interface="ib0",
+            walltime=walltime,
+            memory=f"{memory} G",
+            resource_spec=f"h_vmem={memory}G",
+            scheduler_options={"dashboard_address": ":2727"},
+            job_extra=[
+                "-V",  # export all environment variables
+                f"-pe smp {cores}",
+                f"-l disk={memory}G",
+            ],
+            local_directory=os.sep.join([
+                os.environ.get("PWD"),
+                "dask-worker-space"]),
+            **job_kwargs
+        )
 
 
 class AltairGridEngineCluster(SGECluster):
@@ -18,7 +44,6 @@ class AltairGridEngineCluster(SGECluster):
                  scheduler_options=None, scheduler_cls=Scheduler, interface=None, protocol=None, config_name=None,
                  cores=None, memory=None, queue='verylong',  # project=None,
                  **job_kwargs):
-
         resource_spec = f'm_mem_free={memory}G'
         total_memory = f'{memory}GB'
         walltime = QUEUE_WALLTIMES[queue]
@@ -45,3 +70,9 @@ class AltairGridEngineCluster(SGECluster):
                          walltime=walltime, resource_spec=resource_spec, job_extra_directives=job_extra_directives,
                          cores=cores, memory=total_memory,
                          **job_kwargs)
+
+
+clusters = {
+    'arc': ARCCluster,
+    'altair': AltairGridEngineCluster
+}

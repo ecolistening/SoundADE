@@ -1,5 +1,6 @@
 import argparse
 
+
 def parser(description):
     parser = argparse.ArgumentParser(description=description)
 
@@ -19,10 +20,12 @@ def parser(description):
 
     return parser
 
+
 class DaskArgumentParser(argparse.ArgumentParser):
 
     def __init__(self, description, memory=128, cores=1, jobs=4, npartitions=100, queue='test.long') -> None:
         super().__init__(description=description)
+        self.add_argument('--cluster', default='altair', help='Which cluster to use?')
 
         self.add_argument('--infile', default=None, help='Input parquet file(s).')
         self.add_argument('--outfile', default=None, help='Parquet file to save results.')
@@ -31,7 +34,8 @@ class DaskArgumentParser(argparse.ArgumentParser):
                           help='Amount of memory required in GB (total per node).')
         self.add_argument('--cores', default=cores, type=int, help='Number of cores per node.')
         self.add_argument('--jobs', default=jobs, type=int, help='Number of simultaneous jobs.')
-        self.add_argument('--npartitions', default=npartitions, type=int, help='Number of simultaneous jobs.')
+        self.add_argument('--npartitions', default=npartitions, type=int,
+                          help='Number of dask partitions for the data.')
         self.add_argument('--queue', default=queue, type=str, help='Job queue to select.')
 
         local = self.add_mutually_exclusive_group()

@@ -1,12 +1,16 @@
 # SoundADE
 Acoustic Descriptor Extraction tool for processing sound on High Performance Computing clusters
 
+## Developing
+
+Checkout the `develop` branch:  
+`git checkout -b develop origin/develop`
 
 ## Installation
 
-`conda env create -f environment.yaml`
+`conda env create -f environment.yml`
 
-Then add the source code to the conda environment:
+Then add the source code to the conda environment:  
 `conda develop -n soundade soundade/src`
 
 ### Troubleshooting

@@ -40,4 +40,4 @@ class DaskArgumentParser(argparse.ArgumentParser):
 
         local = self.add_mutually_exclusive_group()
         local.add_argument('--local', dest='local', default=False, action='store_true')
-        local.add_argument('--cluster', dest='local', default=False, action='store_false')
+        local.add_argument('--hpc', dest='local', default=False, action='store_false')

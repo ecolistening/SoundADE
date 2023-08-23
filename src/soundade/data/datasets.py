@@ -24,6 +24,8 @@ logging.basicConfig(level=logging.INFO)
 string__type = 'string'  # 'string[pyarrow]'
 
 
+# TODO redo as a factory
+
 class Dataset:
     @staticmethod
     def write_wav(d, outpath, filename_params: List = None):

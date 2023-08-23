@@ -22,6 +22,12 @@ def copy_except_audio(d: Dict):
 
 
 def create_file_load_dictionary(files: List, sr=None):
+    """
+    
+    :param files: 
+    :param sr: Leaving sr as the default None ensures that librosa will load the file at its native sample rate. 
+    :return: 
+    """
     audio_dicts = []
     for f in files:
         d = {

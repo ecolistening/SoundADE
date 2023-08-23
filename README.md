@@ -8,7 +8,7 @@ Checkout the `develop` branch:
 
 ## Installation
 
-`conda env create -f environment.yaml`
+`conda env create -f environment.yml`
 
 Then add the source code to the conda environment:  
 `conda develop -n soundade soundade/src`

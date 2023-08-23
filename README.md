@@ -6,6 +6,9 @@ Acoustic Descriptor Extraction tool for processing sound on High Performance Com
 
 `conda env create -f environment.yaml`
 
+Then add the source code to the conda environment:
+`conda develop -n soundade soundade/src`
+
 ### Troubleshooting
 
 #### Solving Environment | Killed

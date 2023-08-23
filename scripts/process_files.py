@@ -22,7 +22,7 @@ defaults = {
 
 def main(cluster=None, indir=None, outfile=None, memory=64, cores=4, jobs=2,
          dataset=None, frame=0, hop=0, n_fft=0, npartitions=None,
-         local=False, save_preprocessed=None,
+         local=False, save_preprocessed=None, compute=False,
          **kwargs):
     if not local:
         # Start cluster
@@ -69,6 +69,9 @@ def main(cluster=None, indir=None, outfile=None, memory=64, cores=4, jobs=2,
     #     print('Schema: ', ddf.schema)
     #     print('Columns: ', ddf.columns)
 
+    if compute:
+        ds.to_parquet(ddf, path=outfile.with_stem(f'{outfile.stem}_computed'), compute=True)
+
 
 if __name__ == '__main__':
     parser = DaskArgumentParser('Extract features from audio files')
@@ -82,6 +85,8 @@ if __name__ == '__main__':
     parser.add_argument('--n_fft', type=int, help='Number of audio frames for the n_fft.')
 
     parser.add_argument('--save-preprocessed', default=None, help='Save the preprocessed files to directory.')
+    parser.add_argument('--compute', default=False, action='store_true',
+                        help='Compute the pandas dataframe and save to parquet.')
 
     parser.set_defaults(**defaults)
 

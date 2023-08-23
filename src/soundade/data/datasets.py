@@ -138,8 +138,11 @@ class Dataset:
         return ddf
 
     @staticmethod
-    def to_parquet(ddf, path: Path, **kwargs):
-        dd.to_parquet(ddf, path, version='2.6', allow_truncated_timestamps=True, write_index=False, **kwargs)
+    def to_parquet(ddf: dd.DataFrame, path: Path, compute=False, **kwargs):
+        if compute:
+            ddf.compute().to_parquet(path, **kwargs)
+        else:
+            dd.to_parquet(ddf, path, version='2.6', allow_truncated_timestamps=True, write_index=False, **kwargs)
 
 
 class SoundingOutDiurnal(Dataset):

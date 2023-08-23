@@ -653,12 +653,14 @@ class WildlifeAcoustics(Dataset):
     @staticmethod
     def filename_metadata(dataframe: pd.DataFrame, filename_column='path') -> pd.DataFrame:
         df = dataframe[filename_column].str.split('/', expand=True)
+        filename = df.iloc[:, -1]
+        rec = filename.str.split('_', expand=True)
 
         # try:
         # Split the file name by '_', the first
-        df['recorder model'] = df.iloc[:, -1].str.split('_', expand=True).iloc[:, 0].str[:3]
-        df['recorder serial'] = df.iloc[:, -1].str.split('_', expand=True).iloc[:, 0].str[3:]
-        df['timestamp'] = pd.to_datetime(df.iloc[:, -1].str.extract(r'(\d{8}_\d{6})').loc[:, 0], format='%Y%m%d_%H%M%S')
+        df['recorder model'] = rec.iloc[:, 0].str[:3]
+        df['recorder serial'] = rec.iloc[:, 0].str[3:]
+        df['timestamp'] = pd.to_datetime(filename.str.extract(r'(\d{8}_\d{6})').loc[:, 0], format='%Y%m%d_%H%M%S')
         # except IndexError as e:
         #     logging.warning(f'Error in processing metadata for {dataframe[filename_column]}')
         #     df['location'] = ''

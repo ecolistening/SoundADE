@@ -658,7 +658,7 @@ class WildlifeAcoustics(Dataset):
         # Split the file name by '_', the first
         df['recorder model'] = df.iloc[:, -1].str.split('_', expand=True).iloc[:, 0].str[:3]
         df['recorder serial'] = df.iloc[:, -1].str.split('_', expand=True).iloc[:, 0].str[3:]
-        df['timestamp'] = pd.to_datetime(df.iloc[:, -1].str.extract(r'(\d{8}_\d{6})'), format='%Y%m%d_%H%M%S')
+        df['timestamp'] = pd.to_datetime(df.iloc[:, -1].str.extract(r'(\d{8}_\d{6})').loc[:, 0], format='%Y%m%d_%H%M%S')
         # except IndexError as e:
         #     logging.warning(f'Error in processing metadata for {dataframe[filename_column]}')
         #     df['location'] = ''

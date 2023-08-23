@@ -1,6 +1,10 @@
 # SoundADE
 Acoustic Descriptor Extraction tool for processing sound on High Performance Computing clusters
 
+## Developing
+
+Checkout the `develop` branch.
+`git checkout -b develop origin/develop`
 
 ## Installation
 

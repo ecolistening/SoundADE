@@ -683,5 +683,5 @@ datasets = {
     'SoundingOutChorus': SoundingOutChorus,
     'ReefChorus': ReefChorus,
     'Cairngorms': Cairngorms,
-    'WildLifeAcoustics': WildlifeAcoustics,
+    'WildlifeAcoustics': WildlifeAcoustics,
 }

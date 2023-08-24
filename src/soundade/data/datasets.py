@@ -81,21 +81,6 @@ class Dataset:
         return b
 
     @staticmethod
-    def preprocess(b: db.Bag, save=None) -> db.Bag:
-        '''Performs any necessary preprocessing on audio data.
-
-        This can include:
-        * audio preprocessing :
-            * high/low/bandpass/etc filtering
-        * file preprocessing:
-            * filtering
-            * selection
-
-        :return:
-        '''
-        return b
-
-    @staticmethod
     def power_spectra(b: db.Bag, **kwargs):
         b = b.map(power_spectra_from_audio, **kwargs)
         return b

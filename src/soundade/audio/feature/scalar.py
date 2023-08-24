@@ -121,6 +121,7 @@ def temporal_entropy(y=None, Nt=512, frame_length=2048, hop_length=512, mode='co
 
 
 FRAME_LENGTH, HOP_LENGTH = 2048, 512
+# TODO THIS IS BAD. Don't hardcode this.
 SAMPLING_RATE = 48000
 
 frame_hop_dict = {'n_fft': FRAME_LENGTH, 'frame_length': FRAME_LENGTH, 'hop_length': HOP_LENGTH}

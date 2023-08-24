@@ -21,6 +21,7 @@ QUEUE_WALLTIMES = {
 class ARCCluster(SGECluster):
     def __init__(self, cores=1, walltime="00:01:00", memory=1, queue=None, **job_kwargs):
         super().__init__(
+            cores=cores,
             interface="ib0",
             walltime=walltime,
             memory=f"{memory} G",

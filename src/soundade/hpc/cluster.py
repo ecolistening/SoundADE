@@ -16,10 +16,10 @@ QUEUE_WALLTIMES = {
 
 # TODO reimplement as factory? (https://realpython.com/factory-method-python/)
 
-
+# TODO make walltime an option
 # Adapted from https://arctraining.github.io/swd6_hpp/05_parallelisation.html#dask-jobqueue
 class ARCCluster(SGECluster):
-    def __init__(self, cores=1, walltime="00:01:00", memory=1, queue=None, **job_kwargs):
+    def __init__(self, cores=1, walltime="24:00:00", memory=1, queue=None, **job_kwargs):
         super().__init__(
             cores=cores,
             interface="ib0",

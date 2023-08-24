@@ -30,7 +30,6 @@ class ARCCluster(SGECluster):
             job_extra=[
                 "-V",  # export all environment variables
                 f"-pe smp {cores}",
-                f"-l disk={memory}G",
             ],
             local_directory=os.sep.join([
                 os.environ.get("PWD"),

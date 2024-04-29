@@ -22,15 +22,8 @@ def lempel_ziv_complexity(sequence: np.ndarray, normalisation: str = 'random', m
     :return:
     '''
 
-    d = set([])
-    w = []
-    for c in sequence.tolist():
-        wc = w + [c]
-        if tuple(wc) in d:
-            w = wc
-        else:
-            d.add(tuple(wc))
-            w = [c]
+    # Compute the dictionary
+    d = lempel_ziv_dictionary(sequence)
 
     # Normalise to the minimum theoretical value as well
     if minimum:
@@ -65,6 +58,41 @@ def lempel_ziv_complexity(sequence: np.ndarray, normalisation: str = 'random', m
     except ZeroDivisionError as e:
         warnings.warn(f'Divided by zero: sequence length {len(sequence.tolist())}, dictionary length {len(d)}')
         return np.nan
+
+def lempel_ziv_dictionary(sequence: np.ndarray):
+  """Compute the dictionary of binary words using Lempel-Ziv algorithm.
+
+  Args:
+    sequence (np.ndarray): The input binary sequence.
+
+  Returns:
+    set: The dictionary of binary words.
+
+  Examples:
+    >>> sequence = np.array([0, 0, 1, 0, 1, 0, 1])
+    >>> lzd = lempel_ziv_dictionary(sequence)
+    >>> sorted(list(dict.fromkeys(lzd)))
+    [(0,), (0, 1), (0, 1, 0), (1,)]
+
+    >>> sequence = np.array([1, 0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0])
+    >>> lzd = lempel_ziv_dictionary(sequence)
+    >>> sorted(list(dict.fromkeys(lzd)))
+    [(0,), (0, 0), (0, 0, 0), (0, 1), (0, 1, 0), (0, 1, 0, 1), (1,), (1, 0), (1, 1), (1, 1, 0)]
+  """
+
+  d = set([])
+  w = []
+  for c in sequence.tolist():
+    wc = w + [c]
+    if tuple(wc) in d:
+      w = wc
+    else:
+      d.add(tuple(wc))
+      w = []
+      # In previous versions, this was written as w = [c] so that the next word contains the last letter
+      # of this word. There is no good reason to do this and it has been removed.
+
+  return d
 
 
 def random_normalisation(s: np.ndarray, n_symbols=None) -> float:

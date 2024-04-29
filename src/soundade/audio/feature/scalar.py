@@ -1,5 +1,30 @@
-from itertools import chain
+"""
+This module contains functions for computing various audio features.
 
+Functions:
+- spectral_flux: Compute the spectral flux of an audio signal.
+- __spectrogram: Compute the spectrogram of an audio signal.
+- zero_crossing_rate: Compute the zero crossing rate of an audio signal.
+- spectral_centroid: Compute the spectral centroid of an audio signal.
+- root_mean_square: Compute the root mean square of an audio signal.
+- acoustic_evenness_index: Compute the acoustic evenness index of an audio signal.
+- bioacoustic_index: Compute the bioacoustic index of an audio signal.
+- acoustic_complexity_index: Compute the acoustic complexity index of an audio signal.
+- spectral_entropy: Compute the spectral entropy of an audio signal.
+- temporal_entropy: Compute the temporal entropy of an audio signal.
+- extract_all: Extract all audio features from a given audio file.
+
+Classes:
+- Feature: Represents an audio feature and provides a method for computing the feature.
+
+Variables:
+- FRAME_LENGTH: The frame length used for computing audio features.
+- HOP_LENGTH: The hop length used for computing audio features.
+- SAMPLING_RATE: The sampling rate of the audio signal.
+
+Features: A list of Feature objects representing all the available audio features.
+"""
+from itertools import chain
 import librosa
 import maad
 import numpy as np

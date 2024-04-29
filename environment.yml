@@ -8,6 +8,7 @@ dependencies:
   - dask>=2022.7.0
   - fastparquet>=0.8.*
   - ffmpeg>=5.1.*
+  - findiff>=0.10.*
   - joblib>=1.1.*
   - libarrow>=10.*
   - librosa>=0.9.*

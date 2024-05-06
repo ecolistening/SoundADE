@@ -1,6 +1,6 @@
 import pandas as pd
 
-from src.soundade.data import by_criteria
+from soundade.data import by_criteria
 
 
 def whole_recorders(df, n=2):

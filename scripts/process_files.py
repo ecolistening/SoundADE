@@ -50,9 +50,9 @@ def main(cluster=None, indir=None, outfile=None, memory=0, cores=0, jobs=0,
         ValueError: If an error occurs during processing.
 
     Examples:
-        >>> main(indir='../data/ecolistening', outfile='../data/processed/ecolistening',
-        ...      dataset='SoundingOutDiurnal', frame=1024, hop=512, n_fft=2048,
-        ...      local=True, save_preprocessed='../data/processed/ecolistening', compute=True)
+        >>> main(indir='./data/ecolistening', outfile='./data/processed/ecolistening.parquet',
+        ...      dataset='SoundingOutDiurnal', frame=2048, hop=512, n_fft=1024,
+        ...      local=True, save_preprocessed='./data/processed/ecolistening', compute=True)
         <Client: ...
     """
 

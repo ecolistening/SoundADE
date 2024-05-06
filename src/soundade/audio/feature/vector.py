@@ -42,7 +42,11 @@ def spectral_flux(y=None, sr=48000, S=None, n_fft=2048, hop_length=512, use_fini
 def __spectrogram(y=None, frame_length=2048, hop_length=512, pad_mode='constant', spec_mode='amplitude', sr=48000,
                   nperseg=1024, noverlap=None, **kwargs):
     windowed = pad_window(y, frame_length, hop_length, mode=pad_mode)
-    return [maad.sound.spectrogram(w, sr, nperseg=nperseg, noverlap=noverlap, mode=spec_mode) for w in windowed]
+
+    try:
+        return [maad.sound.spectrogram(w, sr, nperseg=nperseg, noverlap=noverlap, mode=spec_mode) for w in windowed]
+    except IndexError as e:
+        raise AttributeError(f'Frame length ({frame_length}) must be greater than 1.5*nperseg ({1.5*nperseg}).')
 
 
 def zero_crossing_rate(y, frame_length=2048, hop_length=512, center=True, **kwargs):

@@ -254,7 +254,7 @@ class SoundingOutDiurnal(Dataset):
 
         ddf = SoundingOutDiurnal.filename_metadata(ddf, cols_data)
         # ddf = SoundingOutDiurnal.timeparts(ddf)
-        # ddf = SoundingOutDiurnal.country_habitat(ddf)  # , use_meta=False)
+        ddf = SoundingOutDiurnal.country_habitat(ddf)  # , use_meta=False)
 
         # ddf = SoundingOutDiurnal.solar(ddf)
 

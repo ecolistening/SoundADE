@@ -149,21 +149,26 @@ class SoundingOutDiurnal(Dataset):
 
     @staticmethod
     def prefilter_file_dictionary(d: Dict) -> bool:
-        regstr = r'(?P<location>\w+)-(?P<recorder>\d+)_(?P<channel>\d+)_(?P<timestamp>\d+_\d+)(?:_000)?.wav'
-        meta_raw = re.search(regstr, d['path'].name).groupdict()
-        location = meta_raw['location'][:2]
-        meta = {
-            'country': SoundingOutDiurnal.habitat_country[location],
-            'habitat': SoundingOutDiurnal.habitat_number[location],
-            'recorder': int(meta_raw['recorder'])
-        }
+        try:  # Filter out short/not started at the right time files.
+            # Extract the metadata
+            regstr = r'(?P<location>\w+)-(?P<recorder>\d+)_(?P<channel>\d+)_(?P<timestamp>\d+_\d+)(?:_000)?.wav'
+            meta_raw = re.search(regstr, d['path'].name).groupdict()
+            location = meta_raw['location'][:2]
+            meta = {
+                'country': SoundingOutDiurnal.habitat_country[location],
+                'habitat': SoundingOutDiurnal.habitat_number[location],
+                'recorder': int(meta_raw['recorder'])
+            }
 
-        channel = int(meta_raw['channel'])
+            channel = int(meta_raw['channel'])
 
-        if (meta in channel1 and channel == 1) or (meta not in channel1 and channel == 0):
-            return True
+            if (meta in channel1 and channel == 1) or (meta not in channel1 and channel == 0):
+                return True
 
-        return False
+            return False
+        except ValueError as e:
+                print(f'Skipping {d["path"].name}')
+                return False
 
     @staticmethod
     def preprocess(b: db.Bag, save=None) -> db.Bag:
@@ -249,7 +254,7 @@ class SoundingOutDiurnal(Dataset):
 
         ddf = SoundingOutDiurnal.filename_metadata(ddf, cols_data)
         # ddf = SoundingOutDiurnal.timeparts(ddf)
-        ddf = SoundingOutDiurnal.country_habitat(ddf)  # , use_meta=False)
+        # ddf = SoundingOutDiurnal.country_habitat(ddf)  # , use_meta=False)
 
         # ddf = SoundingOutDiurnal.solar(ddf)
 

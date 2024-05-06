@@ -1,0 +1,10 @@
+{
+    "python.testing.pytestArgs": [
+        "--doctest-modules",
+        "--doctest-report",
+        "ndiff",
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.nosetestsEnabled": false,
+    "python.testing.pytestEnabled": true
+}

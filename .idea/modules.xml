@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/SoundADE.iml" filepath="$PROJECT_DIR$/.idea/SoundADE.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../dac/dynamicalacousticcomplexity_experiments/.idea/dynamicalacousticcomplexity.iml" filepath="$PROJECT_DIR$/../dac/dynamicalacousticcomplexity_experiments/.idea/dynamicalacousticcomplexity.iml" />
     </modules>
   </component>
 </project>

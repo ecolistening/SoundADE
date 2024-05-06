@@ -1,0 +1,16 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python Debugger: Current File with Arguments",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "args": "--indir ./data/ecolistening --outfile ./data/processed/ecolistening --dataset SoundingOutDiurnal --frame=1024 --hop=512 --n_fft=2048 --local --save-preprocessed=./data/processed/ecolistening --compute --debug"
+    }
+  ]
+}

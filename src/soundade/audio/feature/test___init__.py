@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from dac.audio.feature import Feature
+from soundade.audio.feature import Feature
 
 
 class TestFeature(TestCase):

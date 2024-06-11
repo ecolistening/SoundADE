@@ -3,6 +3,8 @@
         "--doctest-modules",
         "--doctest-report",
         "ndiff",
+        "-Wignore",
+        "-o=ELLIPSIS",
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.nosetestsEnabled": false,

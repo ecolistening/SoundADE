@@ -1,10 +1,6 @@
 import pandas as pd
 
-<<<<<<< Updated upstream
-from soundade.data import by_criteria
-=======
 from soundade.data.filter import by_criteria
->>>>>>> Stashed changes
 
 
 def whole_recorders(df, n=2):

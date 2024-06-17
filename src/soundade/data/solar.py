@@ -46,11 +46,6 @@ def solartimes(dataframe: pd.DataFrame, locations: Union[pd.DataFrame, Path, str
         >>> locations = pd.DataFrame({'location': ['A', 'B'], 'latitude': [40.7128, 34.0522], 'longitude': [-74.0060, -118.2437], 'timezone': ['America/New_York', 'America/Los_Angeles']})
         >>> solartimes(dataframe, locations)
     """
-    
-    # Function implementation goes here
-    # ...
-    # ...
-    # ...
 def solartimes(dataframe: pd.DataFrame, locations: Union[pd.DataFrame, Path, str] = locations_default) -> pd.DataFrame:
 
 

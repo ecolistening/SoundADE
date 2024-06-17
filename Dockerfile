@@ -1,8 +1,4 @@
-<<<<<<< Updated upstream
-FROM continuumio/anaconda3
-=======
 FROM continuumio/anaconda3:2023.03-1
->>>>>>> Stashed changes
 #LABEL authors="David Kadish"
 
 WORKDIR /code

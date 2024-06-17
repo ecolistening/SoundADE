@@ -24,11 +24,7 @@ def find_sun(r, locations):
 
 tod_cols = ['dawn', 'sunrise', 'noon', 'sunset', 'dusk']
 
-<<<<<<< Updated upstream
-def solartimes(dataframe: pd.DataFrame, locations: pd.DataFrame | Path | str = locations_default) -> pd.DataFrame:
-=======
 def solartimes(dataframe: pd.DataFrame, locations: Union[pd.DataFrame, Path, str] = locations_default) -> pd.DataFrame:
->>>>>>> Stashed changes
     """
     Calculate solar event times (dawn, sunrise, sunset, dusk) for each timestamp in the given dataframe.
 
@@ -53,18 +49,6 @@ def solartimes(dataframe: pd.DataFrame, locations: Union[pd.DataFrame, Path, str
         >>> locations = pd.DataFrame({'location': ['A', 'B'], 'latitude': [40.7128, 34.0522], 'longitude': [-74.0060, -118.2437], 'timezone': ['America/New_York', 'America/Los_Angeles']})
         >>> solartimes(dataframe, locations)
     """
-    
-    # Function implementation goes here
-    # ...
-    # ...
-    # ...
-<<<<<<< Updated upstream
-def solartimes(dataframe: pd.DataFrame, locations: pd.DataFrame | Path | str = locations_default) -> pd.DataFrame:
-=======
-def solartimes(dataframe: pd.DataFrame, locations: Union[pd.DataFrame, Path, str] = locations_default) -> pd.DataFrame:
->>>>>>> Stashed changes
-
-
     # print(f'dataframe: {dataframe.shape}')
 
     # There may be duplicate indices in the dataframe, so we reset the indices,

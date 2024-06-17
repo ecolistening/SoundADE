@@ -19,7 +19,11 @@ dependencies:
   - pyarrow>=10.*
   - pykml>=0.2.*
   - pysoundfile>=0.10.*
+<<<<<<< Updated upstream
   - python>=3.9.*
+=======
+  - python==3.9.*
+>>>>>>> Stashed changes
   - resampy>=0.4.*
   - seaborn>=0.12.*
   - jupyter>=1.0.*

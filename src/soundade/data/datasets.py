@@ -308,7 +308,7 @@ class SoundingOutDiurnal(Dataset):
         return df
 
     @staticmethod
-    def solar(df, dask=True, use_meta=True):
+    def solar(df, locations=None, dask=True, use_meta=True):
         # meta = df.assign(**{
         #         'dawn': df.timestamp, 'sunrise': df.timestamp, 'noon': df.timestamp,
         #         'sunset': df.timestamp, 'dusk': df.timestamp,
@@ -316,7 +316,8 @@ class SoundingOutDiurnal(Dataset):
         #         'hours after sunset': 0.0, 'hours after dusk': 0.0,
         #         'dawn end': df.timestamp, 'dusk start': df.timestamp, 'dddn': ''
         #     })
-        ts_type = 'M'  # ddf.dtypes.timestamp
+        # ts_type = 'M'  # ddf.dtypes.timestamp
+        ts_type = 'datetime64[ns]'
         float_type = 'float64'
         str_type = 'string'
 
@@ -336,9 +337,9 @@ class SoundingOutDiurnal(Dataset):
         m = m.astype(meta.to_dict())
 
         if use_meta:
-            df = df.map_partitions(solartimes, meta=m)
+            df = df.map_partitions(solartimes, locations=locations, meta=m)
         else:
-            df = df.map_partitions(solartimes)
+            df = df.map_partitions(solartimes, locations=locations)
 
         return df
 
@@ -476,7 +477,7 @@ class SoundingOutChorus(Dataset):
         return df
 
     @staticmethod
-    def solar(df, dask=True, use_meta=True):
+    def solar(df, locations=None, dask=True, use_meta=True):
         ts_type = 'M'  # ddf.dtypes.timestamp
         float_type = 'float64'
         str_type = 'string'
@@ -494,9 +495,9 @@ class SoundingOutChorus(Dataset):
         m = m.astype(meta.to_dict())
 
         if use_meta:
-            df = df.map_partitions(solartimes, meta=m)
+            df = df.map_partitions(solartimes, locations=locations, meta=m)
         else:
-            df = df.map_partitions(solartimes)
+            df = df.map_partitions(solartimes, locations=locations)
 
         return df
 

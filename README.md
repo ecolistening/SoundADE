@@ -19,3 +19,8 @@ Then add the source code to the conda environment:
 Sometimes the environement solving step can take up too much memory (especially for a login node on a cluster). This can be fixed by removing channels from the YAML file. For me, removing `anaconda` and `defaults` did the trick.
 
 ## Docker
+
+```
+sudo docker build --tag 'soundade/process' .
+sudo docker run 'soundade/process'
+```

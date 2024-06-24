@@ -54,7 +54,7 @@ def main(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=2, 
         timeparts (bool): Flag indicating whether to process time parts of the data.
         country_habitat (bool): Flag indicating whether to process country and habitat information of the data.
         solar (bool): Flag indicating whether to process solar information of the data.
-        compute (bool): Flag indicating whether to compute and save the processed data.
+        compute (bool): Flag indicating whether to compute and save the processed data. Used mainly for very small datasets and for testing purposes.
         test (bool): Flag indicating whether to run the function in test mode.
         local_cluster (bool): Flag indicating whether to use a local cluster for computation.
 
@@ -86,7 +86,7 @@ def main(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=2, 
     # if npartitions is not None:
     #     print(f'Repartitioning to {npartitions} partitions')
     #     df = df.repartition(npartitions=npartitions)
-    df = df.persist()
+    df = df.persist() #TODO: Unclear if this persist is necessary or does anything. Test and remove if unnecessary.
     df = df.repartition(partition_size='20MB').persist()
     print(f'After repartition: {df.npartitions}')
 

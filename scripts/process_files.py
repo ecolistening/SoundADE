@@ -9,20 +9,24 @@ from soundade.hpc.cluster import clusters
 
 cfg.set({'distributed.scheduler.worker-ttl': None})
 
+# Defaults are set for running in the container
 defaults = {
-    'memory': 32,
-    'cores': 8,
-    'jobs': 12,
-    'frame': 16000,  # frames
-    'hop': 4000,  # frames
-    'n_fft': 16000,  # frames
-    'npartitions': 2000
+    'indir': "/data",
+    'outfile': "/data/processed",
+    'local': True,
+    'local_threads': 1,
+    'memory': 0,
+    'cores': 1,
+    'frame': 2048,
+    'hop': 512,
+    'n_fft': 2048,
 }
 
 
 def main(cluster=None, indir=None, outfile=None, memory=0, cores=0, jobs=0,
-         dataset=None, frame=0, hop=0, n_fft=0, npartitions=1,
-         local=False, save_preprocessed=None, compute=False, debug=False,
+         queue='general', dataset=None, frame=0, hop=0, n_fft=0, npartitions=None,
+         local=True, local_threads=1, compute=False, debug=False,
+         overwrite_parquet=True, save_preprocessed=None, 
          **kwargs):
     """
     Process audio files using the specified parameters.
@@ -67,7 +71,7 @@ def main(cluster=None, indir=None, outfile=None, memory=0, cores=0, jobs=0,
         if debug:
             cfg.set(scheduler='synchronous')
 
-        client = Client(n_workers=1, threads_per_worker=1)
+        client = Client(n_workers=cores, threads_per_worker=2)
         print(client)
 
     outfile = Path(outfile)
@@ -79,7 +83,7 @@ def main(cluster=None, indir=None, outfile=None, memory=0, cores=0, jobs=0,
     if save_preprocessed is not None:
         Path(save_preprocessed).mkdir(parents=True, exist_ok=True)
 
-    b = ds.preprocess(b, save=save_preprocessed)
+    #b = ds.preprocess(b, save=save_preprocessed)
 
     # Extract all of the features
     b = ds.extract_features(b, frame, hop, n_fft).persist()
@@ -91,18 +95,9 @@ def main(cluster=None, indir=None, outfile=None, memory=0, cores=0, jobs=0,
     ddf = ddf.repartition(npartitions=npartitions).persist()
     ddf = ds.metadata(ddf)
 
-    # ddf.visualize(filename=f'{datetime.now()}-tasks.svg')
-    # ddf.visualize(filename=f'{datetime.now()}-tasks-optimised.svg', optimize_graph=True)
-
     ddf = ddf.repartition(npartitions=npartitions).persist()
 
-    # print(ddf.columns)
-
     ds.to_parquet(ddf, path=outfile)
-    # except ValueError as e:
-    #     print(e)
-    #     print('Schema: ', ddf.schema)
-    #     print('Columns: ', ddf.columns)
 
     if compute:
         ds.to_parquet(ddf, path=outfile.with_stem(f'{outfile.stem}_computed'), compute=True)

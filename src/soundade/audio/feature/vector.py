@@ -39,7 +39,7 @@ def spectral_flux(y=None, sr=48000, S=None, n_fft=2048, hop_length=512, use_fini
     return dist
 
 
-def __spectrogram(y=None, frame_length=2048, hop_length=512, pad_mode='constant', spec_mode='amplitude', sr=48000,
+def do_spectrogram(y=None, frame_length=2048, hop_length=512, pad_mode='constant', spec_mode='amplitude', sr=48000,
                   nperseg=1024, noverlap=None, **kwargs):
     windowed = pad_window(y, frame_length, hop_length, mode=pad_mode)
 
@@ -71,7 +71,7 @@ def acoustic_evenness_index(y=None, flim=(0, 20000), spectrograms=None, frame_le
     fmin, fmax = flim
 
     if spectrograms is None:
-        spectrograms = __spectrogram(y, frame_length, hop_length, pad_mode=mode, sr=sr, nperseg=nperseg,
+        spectrograms = do_spectrogram(y, frame_length, hop_length, pad_mode=mode, sr=sr, nperseg=nperseg,
                                      noverlap=noverlap)
 
     return np.array(
@@ -83,7 +83,7 @@ def bioacoustic_index(y=None, flim=(2000, 15000), spectrograms=None, frame_lengt
     assert (y is not None) or (spectrograms is not None)
 
     if spectrograms is None:
-        spectrograms = __spectrogram(y, frame_length, hop_length, pad_mode=mode, sr=sr, nperseg=nperseg,
+        spectrograms = do_spectrogram(y, frame_length, hop_length, pad_mode=mode, sr=sr, nperseg=nperseg,
                                      noverlap=noverlap)
 
     return np.array([maad.features.bioacoustics_index(Sxx, fn, flim) for Sxx, _, fn, _ in spectrograms])
@@ -94,7 +94,7 @@ def acoustic_complexity_index(y=None, spectrograms=None, frame_length=2048, hop_
     assert (y is not None) or (spectrograms is not None)
 
     if spectrograms is None:
-        spectrograms = __spectrogram(y, frame_length, hop_length, pad_mode=mode, sr=sr, nperseg=nperseg,
+        spectrograms = do_spectrogram(y, frame_length, hop_length, pad_mode=mode, sr=sr, nperseg=nperseg,
                                      noverlap=noverlap)
 
     return np.array([maad.features.acoustic_complexity_index(Sxx)[2] for Sxx, _, _, _ in spectrograms])
@@ -106,7 +106,7 @@ def spectral_entropy(y=None, power_spectrograms=None, frame_length=2048, hop_len
 
     if power_spectrograms is None:
         # Requires the power spectrogram, so compute it here.
-        power_spectrograms = __spectrogram(y, frame_length, hop_length, pad_mode=mode, spec_mode='psd', sr=sr,
+        power_spectrograms = do_spectrogram(y, frame_length, hop_length, pad_mode=mode, spec_mode='psd', sr=sr,
                                            nperseg=nperseg, noverlap=noverlap)
 
     return np.array([maad.features.frequency_entropy(Sxx_power)[0] for Sxx_power, _, _, _ in power_spectrograms])
@@ -139,7 +139,7 @@ def extract_all(f, frame_length=FRAME_LENGTH, hop_length=HOP_LENGTH, mode='const
                 noverlap=None, **kwargs):
     audio, sr = librosa.load(f, sr=SAMPLING_RATE)
 
-    spectrograms = __spectrogram(y=audio, frame_length=frame_length, hop_length=hop_length, pad_mode=mode, sr=sr,
+    spectrograms = do_spectrogram(y=audio, frame_length=frame_length, hop_length=hop_length, pad_mode=mode, sr=sr,
                                  nperseg=nperseg, noverlap=noverlap, **kwargs)
 
     features = []

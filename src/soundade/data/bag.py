@@ -11,7 +11,7 @@ import numpy as np
 import scipy
 
 from soundade.audio.feature.scalar import Features as ScalarFeatures
-from soundade.audio.feature.vector import Features
+from soundade.audio.feature.vector import Features, do_spectrogram
 from soundade.audio.filter import dc_offset
 
 FRAME_LENGTH, HOP_LENGTH = 16000, 4000
@@ -193,6 +193,9 @@ def extract_features_from_audio(audio_dict: Dict, frame_length: int = FRAME_LENG
 
     # Remove the raw audio, which we don't want anymore
     audio = audio_dict.get('audio')
+    spectrogram = do_spectrogram(audio,
+                                 frame_length=frame_length,
+                                 hop_length=hop_length)
 
     # Update
     data_dict.update({
@@ -207,7 +210,7 @@ def extract_features_from_audio(audio_dict: Dict, frame_length: int = FRAME_LENG
 
     for feature in Features:
         comp = feature.compute(audio, frame_length=frame_length, hop_length=hop_length, n_fft=n_fft,
-                               sr=audio_dict.get('sr'), **kwargs)
+                               sr=audio_dict.get('sr'), spectrograms=spectrogram, **kwargs)
         data_dict[feature.name] = comp.flatten().tolist()
         data_dict['feature length'] = max(len(data_dict[feature.name]), data_dict['feature length'])
 

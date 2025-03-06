@@ -92,16 +92,13 @@ def main(cluster=None, indir=None, outfile=None, memory=0, cores=0, jobs=0,
     #b = ds.preprocess(b, save=save_preprocessed)
 
     # Extract all of the features
-    b = ds.extract_features(b, frame, hop, n_fft).persist()
+    b = ds.extract_features(b, frame, hop, n_fft)
 
     # Convert to dataframe format
     ddf = ds.to_dataframe(b)
 
-    # Repartition and extract metadata
-    ddf = ddf.repartition(npartitions=npartitions).persist()
+    # Extract metadata
     ddf = ds.metadata(ddf)
-
-    ddf = ddf.repartition(npartitions=npartitions).persist()
 
     ds.to_parquet(ddf, path=outfile, overwrite=overwrite_parquet)
 

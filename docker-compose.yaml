@@ -1,0 +1,11 @@
+services:
+  app:
+    container_name: soundade-process
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - 8787:8787
+    working_dir: /code
+    volumes:
+      - ./data:/data

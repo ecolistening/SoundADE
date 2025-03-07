@@ -1,6 +1,8 @@
 FROM continuumio/anaconda3:2023.03-1
 #LABEL authors="David Kadish"
 
+ENV PROFILE=small
+ENV PROFILE_PATH=./profiles/$PROFILE
 WORKDIR /code
 
 # Create the environment:
@@ -18,5 +20,6 @@ RUN python -c "import pandas"
 # The code to run when container is started:
 COPY scripts/process_files.py /code/process_files.py
 COPY src/soundade/ /code/soundade/
+COPY profiles/ /code/profiles/
 
-ENTRYPOINT ["conda", "run", "-n", "soundade", "python", "./process_files.py", "--local", "--indir", "../data/BA_11_sub/Data_0/", "--outfile", "../data/processed/ecolistening/features_sub_no_solar.parquet", "--dataset", "SoundingOutDiurnal", "--memory=6", "--frame=2048", "--hop=412", "--n_fft=2048", "--debug", "--cores=6"]
+ENTRYPOINT conda run -n soundade xargs -a $PROFILE_PATH python ./process_files.py

@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 from dask import config as cfg
@@ -59,7 +60,7 @@ def main(cluster=None, indir=None, outfile=None, memory=0, cores=0, jobs=0,
         ...      local=True, save_preprocessed='./data/processed/ecolistening/processed_audio', compute=True)
         <Client: ...
     """
-
+    t0 = time.time()
     if not local:
         # Start cluster
         cluster = clusters[cluster](cores=cores, memory=memory,
@@ -104,6 +105,9 @@ def main(cluster=None, indir=None, outfile=None, memory=0, cores=0, jobs=0,
 
     if compute:
         ds.to_parquet(ddf, path=outfile.with_stem(f'{outfile.stem}_computed'), compute=True)
+
+    t1 = time.time()
+    print(f'Time taken: {t1 - t0} seconds')
 
 
 if __name__ == '__main__':

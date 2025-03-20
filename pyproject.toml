@@ -1,0 +1,9 @@
+[project]
+name="soundade"
+version="0.0.1"
+description="soundade library files"
+readme="README.md"
+authors= [
+            {name = "David Kadish", email = "david.kadish@mau.se"},
+            {name = "Nicolas Seymour-Smith", email = "nrs23@sussex.ac.uk"}
+         ]

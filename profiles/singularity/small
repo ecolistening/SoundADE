@@ -1,0 +1,8 @@
+"--indir=/data"
+"--outfile=/data/processed"
+"--dataset=SoundingOutDiurnal"
+"--memory=0"
+"--frame=2048"
+"--hop=512"
+"--n_fft=2048"
+"--cores=6"

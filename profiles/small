@@ -1,5 +1,3 @@
-"--indir=/data"
-"--outfile=/data/processed"
 "--dataset=SoundingOutDiurnal"
 "--memory=0"
 "--frame=2048"

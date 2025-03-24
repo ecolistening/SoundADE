@@ -459,3 +459,4 @@ dependencies:
       - scikit-maad==1.4.3
       - tqdm==4.67.1
       - tqdm-joblib==0.0.4
+prefix: /opt/conda/envs/soundade

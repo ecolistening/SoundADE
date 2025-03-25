@@ -18,7 +18,7 @@ From: soundade-environment.sif
   opt/conda/bin/conda run -n soundade python -m pip install /code
 
 %runscript
-  exec /code/pipeline-steps.sh -c
+  bash /code/pipeline-steps.sh
 
 %labels
   Author nrs23@sussex.ac.uk, david.kadish@mau.se

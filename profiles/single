@@ -1,7 +1,5 @@
 "--local"
 "--local_threads=1"
-"--indir=/data"
-"--outfile=/data/processed"
 "--dataset=SoundingOutDiurnal"
 "--memory=0"
 "--frame=2048"

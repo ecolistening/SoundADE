@@ -1,5 +1,4 @@
 #!/bin/bash
-cd $CODE_PATH
 
 export CODE_PATH=$HOME/SoundADE
 export DATA_PATH=$HOME/soundade-data/eco1

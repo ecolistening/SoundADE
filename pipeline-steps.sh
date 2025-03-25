@@ -15,7 +15,10 @@ xargs -a $PROFILE_PATH \
       $CONDA_PATH/envs/soundade/bin/python $CODE_PATH/scripts/process_files.py \
       "--indir=$DATA_PATH" \
       "--outfile=$DATA_PATH/processed" \
-      "--cores=$CORES"
+      "--cores=$CORES" \
+      "--local" \
+      "--local_threads=1" \
+      "--memory=0"
 
 #Capture environment and git hash for reproducibility
 conda run -n soundade conda env export -c conda-forge -c anaconda -c defaults > $DATA_PATH/run-environment/environment.yml

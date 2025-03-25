@@ -1,3 +1,5 @@
+"--local"
+"--local_threads=1"
 "--dataset=SoundingOutDiurnal"
 "--memory=0"
 "--frame=2048"

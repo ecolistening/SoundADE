@@ -1,6 +1,6 @@
 import os
 
-from dask_jobqueue import SGECluster
+from dask_jobqueue import SGECluster, SLURMCluster
 from dask_jobqueue.core import Job
 from distributed import Scheduler
 
@@ -36,6 +36,29 @@ class ARCCluster(SGECluster):
                 "dask-worker-space"]),
             **job_kwargs
         )
+
+
+class ArtemisCluster(SLURMCluster):
+    def __init__(self, n_workers=0, job_cls: Job = None, loop=None, security=None, shared_temp_directory=None,
+                 silence_logs="error", name=None, asynchronous=False, dashboard_address=None, host=None,
+                 scheduler_options=None, scheduler_cls=Scheduler, interface=None, protocol=None, config_name=None,
+                 cores=None, memory=None, queue='verylong',  # project=None,
+                 **job_kwargs):
+        resource_spec = f'--mem={memory}G'
+        total_memory = f'{memory}G'
+        walltime = QUEUE_WALLTIMES[queue]
+        job_extra_directives = [
+            f'-p {queue}',
+        ]
+        if cores is not None and cores > 1:
+            resource_spec = f'--mem={memory / cores}G'
+            job_extra_directives.append(f'-n {cores}')
+
+        super().__init__(n_workers, job_cls, loop, security, shared_temp_directory, silence_logs, name, asynchronous,
+                         dashboard_address, host, scheduler_options, scheduler_cls, interface, protocol, config_name,
+                         walltime=walltime, resource_spec=resource_spec, job_extra_directives=job_extra_directives,
+                         cores=cores, memory=total_memory,
+                         **job_kwargs)
 
 
 class AltairGridEngineCluster(SGECluster):
@@ -74,5 +97,6 @@ class AltairGridEngineCluster(SGECluster):
 
 clusters = {
     'arc': ARCCluster,
-    'altair': AltairGridEngineCluster
+    'altair': AltairGridEngineCluster,
+    'artemis': ArtemisCluster
 }

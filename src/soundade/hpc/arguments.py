@@ -23,9 +23,9 @@ def parser(description):
 
 class DaskArgumentParser(argparse.ArgumentParser):
 
-    def __init__(self, description, memory=128, cores=1, jobs=4, npartitions=100, queue='test.long') -> None:
+    def __init__(self, description, memory=128, cores=1, jobs=4, npartitions=None, queue='general') -> None:
         super().__init__(description=description)
-        self.add_argument('--cluster', default='altair', help='Which cluster to use?')
+        self.add_argument('--cluster', default='artemis', help='Which cluster to use?')
 
         self.add_argument('--infile', default=None, help='Input parquet file(s).')
         self.add_argument('--outfile', default=None, help='Parquet file to save results.')

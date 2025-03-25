@@ -62,8 +62,8 @@ def main(cluster=None, indir=None, outfile=None, memory=0, cores=0, jobs=0,
 
     if not local:
         # Start cluster
-        cluster = clusters[cluster](cores=cores, memory=memory, queue='test.long',
-                                    name=None)  # .short', name=None)
+        cluster = clusters[cluster](cores=cores, memory=memory,
+                                    queue=queue, name=None)
         print(cluster.job_script())
         cluster.scale(jobs=jobs)
         client = Client(cluster)
@@ -71,7 +71,13 @@ def main(cluster=None, indir=None, outfile=None, memory=0, cores=0, jobs=0,
         if debug:
             cfg.set(scheduler='synchronous')
 
-        client = Client(n_workers=cores, threads_per_worker=2)
+        memory_per_worker = "auto"
+        if cores is not None and memory > 0:
+            memory_per_worker = f'{memory / cores}GiB'
+
+        client = Client(n_workers=cores,
+                        threads_per_worker=local_threads,
+                        memory_limit=memory_per_worker)
         print(client)
 
     outfile = Path(outfile)
@@ -97,7 +103,7 @@ def main(cluster=None, indir=None, outfile=None, memory=0, cores=0, jobs=0,
 
     ddf = ddf.repartition(npartitions=npartitions).persist()
 
-    ds.to_parquet(ddf, path=outfile)
+    ds.to_parquet(ddf, path=outfile, overwrite=overwrite_parquet)
 
     if compute:
         ds.to_parquet(ddf, path=outfile.with_stem(f'{outfile.stem}_computed'), compute=True)
@@ -119,6 +125,8 @@ if __name__ == '__main__':
                         help='Compute the pandas dataframe and save to parquet.')
 
     parser.add_argument('--debug', default=False, action='store_true', help='Sets single-threaded for debugging.')
+    parser.add_argument('--local_threads', type=int, default=1, help='Threads to use when run locally')
+    parser.add_argument('--overwrite_parquet', default=True, action='store_true', help='Overwrites previous output data')
 
     parser.set_defaults(**defaults)
 

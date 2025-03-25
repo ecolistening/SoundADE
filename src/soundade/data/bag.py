@@ -254,15 +254,13 @@ def extract_scalar_features_from_audio(audio_dict: Dict, frame_length: int = FRA
 
 def log_features(features_dict: Dict, features: Iterable = []):
     for f in features:
-        features_dict[f'log {f}'] = np.log(features_dict[f])
-
+        features_dict.update({f'log {f}': np.log(features_dict[f])})
     return features_dict
 
 
 def transform_features(features_dict: Dict, transformation: Callable, name='{f}', features: Iterable = []):
     for f in features:
-        print('Doing feature: ' + name.format(f=f))
-        features_dict[name.format(f=f)] = transformation(features_dict[f])
+        features_dict.update({name.format(f=f): transformation(features_dict[f])})
 
     return features_dict
 

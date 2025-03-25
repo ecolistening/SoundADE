@@ -23,6 +23,7 @@ while getopts "sdbl" flag; do
            singularity run --env "CORES=$CORES" -B $DATA_PATH:/data $CODE_PATH/pipeline.sif
            ;;
         d) echo "Running using docker"
+           sudo docker rm sa-pipeline
            sudo docker run --name sa-pipeline -e CORES=$CORES -p 8787:8787 -v $DATA_PATH:/data soundade
            sudo chown -R $USER:$USER $DATA_PATH  # Fix permissions on sudo written folders
            ;;

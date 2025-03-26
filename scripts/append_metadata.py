@@ -37,9 +37,9 @@ def main_local(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jo
     df.to_parquet(outfile)
 
 
-def main(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=2, npartitions=20,
+def main(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=1, npartitions=None,
          filename=True, timeparts=True, country_habitat=True, solar=True, compute=False,
-         test=False, local_cluster=False, **kwargs):
+         test=False, local_cluster=True, **kwargs):
     """
     Process and append metadata to the input data.
 

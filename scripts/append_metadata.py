@@ -71,8 +71,15 @@ def main(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=1, 
     assert outfile is not None
 
     if local_cluster:
-        cluster = LocalCluster()
-        client = Client(cluster)
+        memory_per_worker = "auto"
+        if cores is not None and memory > 0:
+            memory_per_worker = f'{memory / cores}GiB'
+
+        client = Client(n_workers=cores,
+                        threads_per_worker=1,
+                        memory_limit=memory_per_worker)
+        print(client)
+
     else:
         # Start cluster
         cluster = AltairGridEngineCluster(cores=cores, memory=memory, queue='test.short', name=None)  # 'AppendMetadata')
@@ -82,13 +89,6 @@ def main(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=1, 
 
     # Read data
     df = dd.read_parquet(infile)
-    print(f'Before repartition: {df.npartitions}')
-    # if npartitions is not None:
-    #     print(f'Repartitioning to {npartitions} partitions')
-    #     df = df.repartition(npartitions=npartitions)
-    df = df.persist() #TODO: Unclear if this persist is necessary or does anything. Test and remove if unnecessary.
-    df = df.repartition(partition_size='20MB').persist()
-    print(f'After repartition: {df.npartitions}')
 
     cols_meta = list(df.columns[:3])
     cols_data = list(df.columns[3:])
@@ -107,8 +107,6 @@ def main(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=1, 
     
     if solar:
         df = SoundingOutDiurnal.solar(df, locations=sitesfile)
-    
-    df = df.persist()
     
     if compute:
         df.compute().to_parquet(outfile)
@@ -130,8 +128,8 @@ if __name__ == '__main__':
     country_habitat.add_argument('-C', dest='country_habitat', default=True, action='store_false')
     
     solar = parser.add_mutually_exclusive_group()
-    solar.add_argument('-s', dest='solar', default=True, action='store_true')
-    solar.add_argument('-S', dest='solar', default=True, action='store_false')
+    solar.add_argument('-s', dest='solar', default=False, action='store_true')
+    solar.add_argument('-S', dest='solar', default=False, action='store_false')
 
     timeparts = parser.add_mutually_exclusive_group()
     timeparts.add_argument('-t', dest='timeparts', default=True, action='store_true')
@@ -139,7 +137,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--compute', dest='compute', default=False, action='store_true')
 
-    parser.add_argument('--local-cluster', default=False, action='store_true')
+    parser.add_argument('--local-cluster', default=True, action='store_true')
 
     args = parser.parse_args()
     print(args)

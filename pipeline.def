@@ -10,7 +10,7 @@ From: soundade-environment.sif
 %files
   ./pyproject.toml /code/pyproject.toml
   ./src /code/src
-  ./scripts/process_files.py /code/scripts/process_files.py
+  ./scripts /code/scripts
   ./pipeline-steps.sh /code/pipeline-steps.sh
   ./README.md /code/README.md
 

@@ -128,8 +128,8 @@ if __name__ == '__main__':
     country_habitat.add_argument('-C', dest='country_habitat', default=True, action='store_false')
     
     solar = parser.add_mutually_exclusive_group()
-    solar.add_argument('-s', dest='solar', default=False, action='store_true')
-    solar.add_argument('-S', dest='solar', default=False, action='store_false')
+    solar.add_argument('-s', dest='solar', default=True, action='store_true')
+    solar.add_argument('-S', dest='solar', default=True, action='store_false')
 
     timeparts = parser.add_mutually_exclusive_group()
     timeparts.add_argument('-t', dest='timeparts', default=True, action='store_true')

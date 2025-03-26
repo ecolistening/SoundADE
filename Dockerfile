@@ -14,7 +14,7 @@ COPY pyproject.toml /code/pyproject.toml
 RUN conda run -n soundade python -m pip install /code
 
 # The code to run when container is started:
-COPY scripts/process_files.py /code/scripts/process_files.py
+COPY scripts/ /code/scripts/
 COPY pipeline-steps.sh /code/pipeline-steps.sh
 
 ENTRYPOINT exec /code/pipeline-steps.sh

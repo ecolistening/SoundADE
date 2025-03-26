@@ -17,4 +17,4 @@ RUN conda run -n soundade python -m pip install /code
 COPY scripts/ /code/scripts/
 COPY pipeline-steps.sh /code/pipeline-steps.sh
 
-ENTRYPOINT exec /code/pipeline-steps.sh
+ENTRYPOINT ["bash", "/code/pipeline-steps.sh"]

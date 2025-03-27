@@ -8,6 +8,8 @@ from soundade.hpc.cluster import AltairGridEngineCluster
 from soundade.data.solar import solartimes
 from soundade.hpc.arguments import DaskArgumentParser
 
+from pathlib import Path
+
 #TODO test parameter does nothing. Remove.
 
 def main_local(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=2, npartitions=20,
@@ -108,6 +110,7 @@ def main(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=1, 
     if solar:
         df = SoundingOutDiurnal.solar(df, locations=sitesfile)
     
+    outfile = Path(outfile)
     if compute:
         df.compute().to_parquet(outfile)
     else:

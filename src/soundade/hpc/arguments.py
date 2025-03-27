@@ -39,5 +39,5 @@ class DaskArgumentParser(argparse.ArgumentParser):
         self.add_argument('--queue', default=queue, type=str, help='Job queue to select.')
 
         local = self.add_mutually_exclusive_group()
-        local.add_argument('--local', dest='local', default=False, action='store_true')
+        local.add_argument('--local', dest='local', default=True, action='store_true')
         local.add_argument('--hpc', dest='local', default=False, action='store_false')

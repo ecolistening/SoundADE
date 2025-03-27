@@ -6,8 +6,8 @@ import pandas as pd
 import scipy.stats
 from dask.distributed import Client
 
-from dac.hpc.cluster import AltairGridEngineCluster
-from scripts.arguments import DaskArgumentParser
+from soundade.hpc.cluster import AltairGridEngineCluster
+from soundade.hpc.arguments import DaskArgumentParser
 
 logging.basicConfig(level=logging.INFO)
 
@@ -39,7 +39,14 @@ def main(infile=None, outfile=None, memory=24, cores=4, jobs=8, npartitions=None
         cluster.scale(jobs=jobs)
         client = Client(cluster)
     else:
-        client = Client()
+        memory_per_worker = "auto"
+        if cores is not None and memory > 0:
+            memory_per_worker = f'{memory / cores}GiB'
+
+        client = Client(n_workers=cores,
+                        threads_per_worker=1,
+                        memory_limit=memory_per_worker)
+        print(client)
         logging.info(client)
 
     # Read data

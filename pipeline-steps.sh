@@ -42,6 +42,16 @@ if [[ ${STEPS_ARRAY[2]} = true ]] ; then
                                          "--memory=0"
 fi
 
+if [[ ${STEPS_ARRAY[3]} = true ]] ; then
+    $CONDA_PATH/envs/soundade/bin/python $CODE_PATH/scripts/to_long.py \
+                                         "--infile=$DATA_PATH/pre" \
+                                         "--outfile=$DATA_PATH/to_long" \
+                                         "--first-frame=3" \
+                                         "--local" \
+                                         "--cores=$CORES" \
+                                         "--memory=0"
+fi
+
 #Capture environment and git hash for reproducibility
 conda run -n soundade conda env export -c conda-forge -c anaconda -c defaults > $DATA_PATH/run-environment/environment.yml
 

@@ -11,7 +11,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 def main(infile=None, outfile=None, memory=24, cores=4, jobs=8, npartitions=None,
-     test=False, queue='test.short', binary=True, local=False, first_frame='0', **kwargs):
+     test=False, queue='test.short', binary=True, local=True, first_frame='0', **kwargs):
   """
   Convert a wide-form dataframe to long-form and save it as a parquet file.
 
@@ -54,7 +54,14 @@ def main(infile=None, outfile=None, memory=24, cores=4, jobs=8, npartitions=None
     cluster.scale(jobs=jobs)
     client = Client(cluster)
   else:
-    client = Client()
+    memory_per_worker = "auto"
+    if cores is not None and memory > 0:
+        memory_per_worker = f'{memory / cores}GiB'
+
+    client = Client(n_workers=cores,
+                    threads_per_worker=1,
+                    memory_limit=memory_per_worker)
+    print(client)
     logging.info(client)
 
   # Read data

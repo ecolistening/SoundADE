@@ -9,8 +9,8 @@ from soundade.hpc.arguments import DaskArgumentParser
 
 from pathlib import Path
 
-def main(infile=None, outfile=None, n_days=10, memory=64, cores=4, jobs=2, npartitions=20,
-    local=False, test=False, **kwargs):
+def main(infile=None, outfile=None, n_days=10, memory=64, cores=4, jobs=1, npartitions=None,
+    local=True, test=False, **kwargs):
     """
   Main function for prefiltering data to create a set of data with the same number of days across sites.
   This script is specific to the DAC project data and is not intended for general use.
@@ -47,11 +47,14 @@ def main(infile=None, outfile=None, n_days=10, memory=64, cores=4, jobs=2, npart
         cluster.scale(jobs=jobs)
         client = Client(cluster)
     else:
-        # client = Client()
-        # print(client)
+        memory_per_worker = "auto"
+        if cores is not None and memory > 0:
+            memory_per_worker = f'{memory / cores}GiB'
 
-        cluster = LocalCluster()
-        client = Client(cluster)
+        client = Client(n_workers=cores,
+                        threads_per_worker=1,
+                        memory_limit=memory_per_worker)
+        print(client)
 
     # Read data
     ddf = dd.read_parquet(infile)
@@ -87,9 +90,9 @@ def main(infile=None, outfile=None, n_days=10, memory=64, cores=4, jobs=2, npart
 
 
 if __name__ == '__main__':
-    parser = DaskArgumentParser('Extract features from audio files', memory=128, cores=1, jobs=4, npartitions=100)
+    parser = DaskArgumentParser('Extract features from audio files', memory=128, cores=1, jobs=4, npartitions=None)
     
-    parser.add_argument('--n-days', default=10, help='How many days to select from the data.')
+    parser.add_argument('--n-days', default=None, help='How many days to select from the data.')
     
     args = parser.parse_args()
     print(args)

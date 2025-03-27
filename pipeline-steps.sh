@@ -26,9 +26,18 @@ fi
 if [[ ${STEPS_ARRAY[1]} = true ]] ; then
     $CONDA_PATH/envs/soundade/bin/python $CODE_PATH/scripts/append_metadata.py \
                                          "--infile=$DATA_PATH/processed" \
-                                         "--outfile=$DATA_PATH/processed" \
+                                         "--outfile=$DATA_PATH/solar" \
                                          "--sitesfile=$DATA_PATH/site_locations.parquet" \
                                          -F -C -T \
+                                         "--cores=$CORES" \
+                                         "--memory=0"
+fi
+
+if [[ ${STEPS_ARRAY[2]} = true ]] ; then
+    $CONDA_PATH/envs/soundade/bin/python $CODE_PATH/scripts/prefilter.py \
+                                         "--infile=$DATA_PATH/solar" \
+                                         "--outfile=$DATA_PATH/pre" \
+                                         "--local" \
                                          "--cores=$CORES" \
                                          "--memory=0"
 fi

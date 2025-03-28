@@ -62,6 +62,28 @@ if [[ ${STEPS_ARRAY[4]} = true ]] ; then
                                          "--memory=0"
 fi
 
+if [[ ${STEPS_ARRAY[5]} = true ]] ; then
+    $CONDA_PATH/envs/soundade/bin/python $CODE_PATH/scripts/astrograms.py \
+                                         "--infile=$DATA_PATH/to_long" \
+                                         "--outfile=$DATA_PATH/histograms" \
+                                         "--histogram" \
+                                         "--long" \
+                                         "--local" \
+                                         "--cores=$CORES" \
+                                         "--memory=0"
+fi
+
+if [[ ${STEPS_ARRAY[6]} = true ]] ; then
+    $CONDA_PATH/envs/soundade/bin/python $CODE_PATH/scripts/astrograms.py \
+                                         "--infile=$DATA_PATH/to_long" \
+                                         "--outfile=$DATA_PATH/histograms" \
+                                         "--astrogram" \
+                                         "--long" \
+                                         "--local" \
+                                         "--cores=$CORES" \
+                                         "--memory=0"
+fi
+
 #Capture environment and git hash for reproducibility
 conda run -n soundade conda env export -c conda-forge -c anaconda -c defaults > $DATA_PATH/run-environment/environment.yml
 

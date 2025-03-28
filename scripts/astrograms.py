@@ -4,12 +4,12 @@ import dask.dataframe as dd
 from dask.distributed import Client, progress
 import numpy as np
 
-from dac.stats.histogram import bin_and_cut, time_of_day_heatmap
-from dac.audio.binarisation import mean_threshold
-from dac.audio.lempel_ziv import lempel_ziv_complexity, lzc_row, windowed_lzc
-from dac.audio.symbolisation import bin_edges, symbolise
-from dac.hpc.cluster import AltairGridEngineCluster
-from scripts.arguments import DaskArgumentParser
+from soundade.stats.histogram import bin_and_cut, time_of_day_heatmap
+from soundade.audio.binarisation import mean_threshold
+from soundade.audio.lempel_ziv import lempel_ziv_complexity, lzc_row, windowed_lzc
+from soundade.audio.symbolisation import bin_edges, symbolise
+from soundade.hpc.cluster import AltairGridEngineCluster
+from soundade.hpc.arguments import DaskArgumentParser
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -31,7 +31,14 @@ def main(infile=None, outfile=None, memory=24, cores=4, jobs=8, npartitions=None
         cluster.scale(jobs=jobs)
         client = Client(cluster)
     else:
-        client = Client()
+        memory_per_worker = "auto"
+        if cores is not None and memory > 0:
+            memory_per_worker = f'{memory / cores}GiB'
+
+        client = Client(n_workers=cores,
+                        threads_per_worker=1,
+                        memory_limit=memory_per_worker)
+        print(client)
         logging.info(client)
 
     # Read data
@@ -42,8 +49,9 @@ def main(infile=None, outfile=None, memory=24, cores=4, jobs=8, npartitions=None
     df = df.persist()
 
     logging.info('Initial Load')
-    print(df._meta)
-    print(df.columns)
+    print('df: (',len(df),',',len(df.columns),')')
+    print(f'df.meta: {df._meta}')
+    print(f'df.columns: {df.columns}')
     
     if is_long:
         df_long = df
@@ -80,9 +88,9 @@ def main(infile=None, outfile=None, memory=24, cores=4, jobs=8, npartitions=None
         meta.pop('dddn')
 
     df_astro = df_long.groupby('feature').apply(bin_and_cut, column='value',
-                                            groupby=groupby,
-                                            upper=0.99, lower=0.01, nbins=nbins, reset_index=True,
-                                            meta=meta).rename(columns={i:str(i) for i in range(10)})
+                                                groupby=groupby,
+                                                upper=0.99, lower=0.01, nbins=nbins, reset_index=True,
+                                                meta=meta).rename(columns={i:str(i) for i in range(10)})
     # df_astro.loc[:,'0':] = df_astro.loc[:,'0':].div(df_astro.loc[:,'0':].sum(axis=1), axis=0)
 
     logging.info('Astrogram')

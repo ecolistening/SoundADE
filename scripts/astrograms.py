@@ -67,7 +67,7 @@ def main(infile=None, outfile=None, memory=24, cores=4, jobs=8, npartitions=None
         # print(df_long._meta)
         # print(df_long.columns)
     
-    df_long = df_long.assign(date=lambda r: r.timestamp.dt.date)
+    df_long = df_long.assign(date=lambda r: r.timestamp.dt.date.astype('datetime64[ns]'))
     
         # logging.info('Date assignment')
         # print(df_long._meta)
@@ -78,7 +78,7 @@ def main(infile=None, outfile=None, memory=24, cores=4, jobs=8, npartitions=None
     meta = {'country': 'string',
             'habitat code': 'string',
             'recorder': 'i4',
-            'date': 'datetime64[D]',
+            'date': 'datetime64[ns]',
             'dddn': 'string'} | dict([i, 'f8'] for i in range(nbins))
 
     if astrogram:

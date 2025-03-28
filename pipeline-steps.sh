@@ -76,7 +76,7 @@ fi
 if [[ ${STEPS_ARRAY[6]} = true ]] ; then
     $CONDA_PATH/envs/soundade/bin/python $CODE_PATH/scripts/astrograms.py \
                                          "--infile=$DATA_PATH/to_long" \
-                                         "--outfile=$DATA_PATH/histograms" \
+                                         "--outfile=$DATA_PATH/astrograms" \
                                          "--astrogram" \
                                          "--long" \
                                          "--local" \

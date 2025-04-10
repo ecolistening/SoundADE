@@ -60,7 +60,7 @@ def solartimes(dataframe: pd.DataFrame, locations: Union[pd.DataFrame, Path, str
     features = dataframe.iloc[:,dataframe.columns.get_loc('0'):]
 
     if len(dataframe.index) == 0:
-        d = {t:'M' for t in tod_cols} | {f'hours before {t}':'float64' for t in tod_cols} | {'dawn start': 'M', 'dusk_start': 'M', 'dddn':'string'}
+        d = {t:'datetime64[ns]' for t in tod_cols} | {f'hours before {t}':'float64' for t in tod_cols} | {'dawn start': 'datetime64[ns]', 'dusk_start': 'datetime64[ns]', 'dddn':'string'}
         return pd.concat([metadata,pd.DataFrame(columns=list(d.keys())).astype(d),features])
 
     # Load locations, if necessary

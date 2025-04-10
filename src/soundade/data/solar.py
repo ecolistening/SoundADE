@@ -12,8 +12,8 @@ def find_sun(r, locations):
     loc = LocationInfo(name=r.location,
                        region=locations[locations.location == r.location].iloc[0, :].country,
                        timezone=locations[locations.location == r.location].iloc[0, :].timezone,
-                       latitude=locations[(locations.location == r.location) & (locations.recorder == r.recorder)].latitude,
-                       longitude=locations[(locations.location == r.location) & (locations.recorder == r.recorder)].longitude
+                       latitude=locations[(locations.location == r.location) & (locations.recorder == r.recorder)].iloc[0].latitude,
+                       longitude=locations[(locations.location == r.location) & (locations.recorder == r.recorder)].iloc[0].longitude
                        )
     s = sun(loc.observer, r.date, tzinfo=loc.tzinfo)
 

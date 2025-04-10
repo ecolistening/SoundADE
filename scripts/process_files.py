@@ -72,9 +72,7 @@ def main(cluster=None, indir=None, outfile=None, memory=0, cores=0, jobs=0,
         if debug:
             cfg.set(scheduler='synchronous')
 
-        memory_per_worker = "auto"
-        if cores is not None and memory > 0:
-            memory_per_worker = f'{memory / cores}GiB'
+        memory_per_worker = f'{memory}GiB'
 
         client = Client(n_workers=cores,
                         threads_per_worker=local_threads,

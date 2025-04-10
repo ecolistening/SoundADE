@@ -31,10 +31,7 @@ def main(infile=None, outfile=None, memory=24, cores=4, jobs=8, npartitions=None
         cluster.scale(jobs=jobs)
         client = Client(cluster)
     else:
-        memory_per_worker = "auto"
-        if cores is not None and memory > 0:
-            memory_per_worker = f'{memory / cores}GiB'
-
+        memory_per_worker = f'{memory}GiB'
         client = Client(n_workers=cores,
                         threads_per_worker=1,
                         memory_limit=memory_per_worker)

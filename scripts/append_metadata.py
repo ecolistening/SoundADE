@@ -73,14 +73,11 @@ def main(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=1, 
     assert outfile is not None
 
     if local_cluster:
-        memory_per_worker = "auto"
-        if cores is not None and memory > 0:
-            memory_per_worker = f'{memory / cores}GiB'
+        memory_per_worker = f'{memory}GiB'
 
         client = Client(n_workers=cores,
                         threads_per_worker=1,
                         memory_limit=memory_per_worker)
-        print(client)
 
     else:
         # Start cluster
@@ -145,7 +142,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     print(args)
 
-    if args.local:
-        main_local(**vars(args))
-    else:
-        main(**vars(args))
+    main(**vars(args))

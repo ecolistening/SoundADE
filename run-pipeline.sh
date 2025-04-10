@@ -20,11 +20,11 @@ usage()
 while getopts "sdbl" flag; do
     case ${flag} in
         s) echo "Running using singularity"
-           singularity run --env "CORES=$CORES" --env "STEPS=$STEPS" -B $DATA_PATH:/data $CODE_PATH/pipeline.sif
+           singularity run --env "CORES=$CORES" --env "MEM_PER_CPU=$MEM_PER_CPU"--env "STEPS=$STEPS" -B $DATA_PATH:/data $CODE_PATH/pipeline.sif
            ;;
         d) echo "Running using docker"
            sudo docker rm sa-pipeline
-           sudo docker run --name sa-pipeline -e CORES=$CORES -e STEPS=$STEPS -p 8787:8787 -v $DATA_PATH:/data soundade
+           sudo docker run --name sa-pipeline -e CORES=$CORES -e MEM_PER_CPU=$MEM_PER_CPU -e STEPS=$STEPS -p 8787:8787 -v $DATA_PATH:/data soundade
            sudo chown -R $USER:$USER $DATA_PATH  # Fix permissions on sudo written folders
            ;;
         b) echo "Running using slurm batch scheduler"

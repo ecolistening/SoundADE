@@ -30,7 +30,7 @@ def binarised(df, outfile, first_frame='0'):
     df['lempel ziv complexity'] = df.loc[:, first_frame:].apply(lzc_row, axis=1, binarisation=mean_threshold,
                                                                 complexity=lzc)
 
-    df = df.drop(columns=df.loc[:, first_frame:_last_col])
+    df = df.drop(columns=df.loc[:, first_frame:_last_col].columns)
 
     # dd.to_parquet(df, outfile.with_stem(f'{outfile.stem}_meta'), version='2.6', allow_truncated_timestamps=True)
     # print(f'Finished outputting df_meta to parquet')

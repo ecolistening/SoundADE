@@ -269,6 +269,7 @@ def transform_features(features_dict: Dict, transformation: Callable, name='{f}'
 
 
 def reformat_for_dataframe(features_dict: Dict, data_keys: List = None, columns_key=None, scalar_values=False):
+    # Label data columns with number from 1 .. n for data of length n
     # Default for feature processing
     if data_keys is None:
         data_keys = [f.name for f in Features]

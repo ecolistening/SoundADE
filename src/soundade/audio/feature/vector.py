@@ -41,6 +41,7 @@ def spectral_flux(y=None, sr=48000, S=None, n_fft=2048, hop_length=512, use_fini
 
 def do_spectrogram(y=None, frame_length=2048, hop_length=512, pad_mode='constant', spec_mode='amplitude', sr=48000,
                   nperseg=1024, noverlap=None, **kwargs):
+    # Split the audio file into windows then return a list of spectrograms of each window
     windowed = pad_window(y, frame_length, hop_length, mode=pad_mode)
 
     try:

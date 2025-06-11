@@ -451,12 +451,5 @@ dependencies:
   - zstandard=0.23.0=py39h8cd3c5a_1
   - zstd=1.5.7=hb8e6e7a_1
   - pip:
-      - astral==3.2
-      - colorednoise==2.2.0
-      - dask-jobqueue==0.8.5
-      - lempel-ziv-complexity==0.2.2
-      - pandas-path==0.3.0
-      - scikit-maad==1.4.3
-      - tqdm==4.67.1
-      - tqdm-joblib==0.0.4
+    - -r requirements.txt
 prefix: /opt/conda/envs/soundade

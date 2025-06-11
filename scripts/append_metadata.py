@@ -3,7 +3,10 @@ from dask import dataframe as dd
 from dask.distributed import Client, LocalCluster
 import pyarrow as pa
 
-from soundade.data.datasets import SoundingOutDiurnal
+from soundade.datasets import datasets
+from soundade.datasets.base import Dataset
+from soundade.datasets.sounding_out_diurnal import SoundingOutDiurnal
+
 from soundade.hpc.cluster import AltairGridEngineCluster
 from soundade.data.solar import solartimes
 from soundade.hpc.arguments import DaskArgumentParser

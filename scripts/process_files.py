@@ -4,7 +4,8 @@ from pathlib import Path
 from dask import config as cfg
 from dask.distributed import Client
 
-from soundade.data.datasets import datasets, Dataset
+from soundade.datasets import datasets
+from soundade.datasets.base import Dataset
 from soundade.hpc.arguments import DaskArgumentParser
 from soundade.hpc.cluster import clusters
 
@@ -39,7 +40,7 @@ def main(cluster=None, indir=None, outfile=None, memory=0, cores=0, jobs=0,
         memory (int, optional): Memory limit for each worker in GB. Defaults to 32.
         cores (int, optional): Number of CPU cores per worker. Defaults to 8.
         jobs (int, optional): Number of worker jobs to start. Defaults to 12.
-        dataset (str, optional): Name of the dataset to use. One of the dictionary keys in soundade.data.datasets.datasets. Required.
+        dataset (str, optional): Name of the dataset to use. The name of a dataset class defined in soundade.datasets. Required.
         frame (int, optional): Frame size for feature extraction. Defaults to 16000.
         hop (int, optional): Hop size for feature extraction. Defaults to 4000.
         n_fft (int, optional): Number of FFT points for feature extraction. Defaults to 16000.

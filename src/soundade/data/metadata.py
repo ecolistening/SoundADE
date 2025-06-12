@@ -1,5 +1,6 @@
 import pandas as pd
-
+import pyarrow as pa
+import numpy as np
 
 def filename(dataframe: pd.DataFrame) -> pd.DataFrame:
     '''Extracts location, recorder, channel, and timestamp from filename and adds them as dataframe metadata.
@@ -29,4 +30,13 @@ def temporal_categories(dataframe: pd.DataFrame) -> pd.DataFrame:
     dataframe['hour'] = dataframe.timestamp.dt.hour
 
     return dataframe
+
+def timeparts(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Extracts date, time and hour from timestamp as individual columns
+    """
+    return pd.DataFrame({
+        "date": pd.to_datetime(df.timestamp.dt.date),
+        "hour": df.timestamp.dt.hour.astype(np.int8),
+    }, index=df.index)
 

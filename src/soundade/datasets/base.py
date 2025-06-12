@@ -19,20 +19,10 @@ from soundade.data.bag import create_file_load_dictionary, load_audio_from_path,
 
 # TODO This is a hack and needs to be removed
 from soundade.data.filter import channel1
+from soundade.data.metadata import timeparts
 from soundade.data.solar import solartimes
 
 logging.basicConfig(level=logging.INFO)
-
-DATE32 = "date32[day]"
-TIMEDELTA64 = "timedelta64[us]"
-DATETIME64 = "datetime64[ns]"
-string__type = 'string'  # 'string[pyarrow]'
-
-def timeparts(df: pd.DataFrame) -> pd.DataFrame:
-    df['date'] = df.timestamp.dt.date
-    df['hour'] = df.timestamp.dt.hour
-    df['time'] = df.timestamp.dt.time
-    return df
 
 class Dataset:
     @staticmethod
@@ -156,16 +146,10 @@ class Dataset:
     def timeparts(
         ddf: dd.DataFrame
     ) -> dd.DataFrame:
-        meta = pd.concat([ddf.dtypes, pd.Series({
-            "date": DATETIME64,
-            "hour": np.int8,
-            "time": TIMEDELTA64,
-        })])
-        ddf = ddf.map_partitions(
-            timeparts,
-            meta=pd.DataFrame(columns=meta.index.to_list()).astype(meta.to_dict()),
-        )
-        return ddf
+        return dd.concat([ddf, ddf.map_partitions(timeparts, meta={
+            "date": "datetime64[ns]",
+            "hour": "int8",
+        })], axis=1)
 
     @staticmethod
     def solar(
@@ -173,24 +157,19 @@ class Dataset:
         sitesfile: str
     ) -> dd.DataFrame:
         meta = pd.concat([ddf.dtypes, pd.Series({
-            "location_id": str,
-            "latitude": np.float64,
-            "longitude": np.float64,
-            "country": str,
-            "timezone": str,
-            'dawn': DATETIME64,
-            'sunrise': DATETIME64,
-            'noon': DATETIME64,
-            'sunset': DATETIME64,
-            'dusk': DATETIME64,
-            'hours after dawn': np.float64,
-            'hours after sunrise': np.float64,
-            'hours after noon': np.float64,
-            'hours after sunset': np.float64,
-            'hours after dusk': np.float64,
-            'dawn end': DATETIME64,
-            'dusk start': DATETIME64,
-            'dddn': str,
+            'dawn': "datetime64[ns]",
+            'sunrise': "datetime64[ns]",
+            'noon': "datetime64[ns]",
+            'sunset': "datetime64[ns]",
+            'dusk': "datetime64[ns]",
+            'hours after dawn': "float64",
+            'hours after sunrise': "float64",
+            'hours after noon': "float64",
+            'hours after sunset': "float64",
+            'hours after dusk': "float64",
+            'dawn end': "datetime64[ns]",
+            'dusk start': "datetime64[ns]",
+            'dddn': "string",
         })])
         ddf = ddf.map_partitions(
             solartimes,
@@ -198,4 +177,3 @@ class Dataset:
             meta=pd.DataFrame(columns=meta.index.to_list()).astype(meta.to_dict()),
         )
         return ddf
-

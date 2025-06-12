@@ -2,6 +2,7 @@ import datetime as dt
 import numpy as np
 import pandas as pd
 import pyarrow as pa
+import logging
 
 from dask import dataframe as dd
 from dask.distributed import Client, LocalCluster
@@ -14,40 +15,7 @@ from soundade.hpc.cluster import AltairGridEngineCluster
 from soundade.data.solar import solartimes
 from soundade.hpc.arguments import DaskArgumentParser
 
-from typing import TypeVar
-
-DATE32 = "date32[day]"
-TIMEDELTA64 = "timedelta64[us]"
-DATETIME64 = "datetime64[ns]"
-
-#TODO test parameter does nothing. Remove.
-
-def main_local(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=2, npartitions=20,
-         filename=True, timeparts=True, country_habitat=True, solar=True, compute=False,
-         test=False, **kwargs):
-    assert infile is not None
-    assert outfile is not None
-
-    # Read data
-    df = pd.read_parquet(infile)
-
-    cols_meta = list(df.columns[:3])
-    cols_data = list(df.columns[3:])
-
-    if filename:
-        df = SoundingOutDiurnal.filename_metadata(df, cols_data)
-
-    if timeparts:
-        df = SoundingOutDiurnal.timeparts(df)
-
-    if country_habitat:
-        df = SoundingOutDiurnal.country_habitat(df, use_meta=False)
-
-    if solar:
-        df = solartimes(df, locations=sitesfile)
-
-    df.to_parquet(outfile)
-
+logging.basicConfig(level=logging.INFO)
 
 def main(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=1, npartitions=None,
          filename=True, timeparts=True, country_habitat=True, solar=True, compute=False,
@@ -84,14 +52,18 @@ def main(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=1, 
 
     if local_cluster:
         memory_per_worker = f'{memory}GiB'
-
-        client = Client(n_workers=cores,
-                        threads_per_worker=1,
-                        memory_limit=memory_per_worker)
-
+        client = Client(
+            n_workers=cores,
+            threads_per_worker=1,
+            memory_limit=memory_per_worker
+        )
     else:
-        # Start cluster
-        cluster = AltairGridEngineCluster(cores=cores, memory=memory, queue='test.short', name=None)  # 'AppendMetadata')
+        cluster = AltairGridEngineCluster(
+            cores=cores,
+            memory=memory,
+            queue='test.short',
+            name=None
+        )
         print(cluster.job_script())
         client = Client(cluster)
         cluster.scale(jobs=jobs)
@@ -100,11 +72,10 @@ def main(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=1, 
     ddf = dd.read_parquet(infile)
     ddf = Dataset.timeparts(ddf)
     ddf = Dataset.solar(ddf, sitesfile=sitesfile)
-    schema = pa.schema([("date", pa.date32()), ("time", pa.time64("us"))])
 
     if compute:
         df = ddf.compute()
-        df.to_parquet(outfile, schema=schema)
+        df.to_parquet(outfile)
     else:
         dd.to_parquet(
             ddf,
@@ -112,12 +83,11 @@ def main(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=1, 
             version='2.6',
             write_index=False,
             allow_truncated_timestamps=True,
-            schema=schema,
         )
 
 if __name__ == '__main__':
     parser = DaskArgumentParser('Extract features from audio files', memory=128, cores=1, jobs=4, npartitions=None)
-    
+
     parser.add_argument('--sitesfile', default=None, help='Parquet file containing site information.')
 
     filename = parser.add_mutually_exclusive_group()
@@ -127,7 +97,7 @@ if __name__ == '__main__':
     country_habitat = parser.add_mutually_exclusive_group()
     country_habitat.add_argument('-c', dest='country_habitat', default=True, action='store_true')
     country_habitat.add_argument('-C', dest='country_habitat', default=True, action='store_false')
-    
+
     solar = parser.add_mutually_exclusive_group()
     solar.add_argument('-s', dest='solar', default=True, action='store_true')
     solar.add_argument('-S', dest='solar', default=True, action='store_false')

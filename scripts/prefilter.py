@@ -89,7 +89,7 @@ def main(infile=None, outfile=None, n_days=10, memory=64, cores=4, jobs=1, npart
 if __name__ == '__main__':
     parser = DaskArgumentParser('Extract features from audio files', memory=128, cores=1, jobs=4, npartitions=None)
     
-    parser.add_argument('--n-days', default=None, help='How many days to select from the data.')
+    parser.add_argument('--n-days', default=10, help='How many days to select from the data.')
     
     args = parser.parse_args()
     print(args)

@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
+import dask
 
-#TODO This is a hack to Keep channel 1 from EC0.4 and EC1.9
 channel1: list[dict] = [
     {'country': 'ecuador', 'habitat': 0, 'recorder': 4},
     {'country': 'ecuador', 'habitat': 1, 'recorder': 9}
@@ -172,7 +172,7 @@ def recorders_with_too_few_points(df: pd.DataFrame, groupby=['location'], agg_co
     return df[date_rec_match]
 
 
-def first_n_days(df: pd.DataFrame, groupby='location', n=10, date_column='date', dask=False) -> pd.DataFrame:
+def first_n_days(df: dask.dataframe.DataFrame, groupby='location', n=10, date_column='date', dask=False) -> pd.DataFrame:
     """
     Keep only the first n days worth of data for each group.
 
@@ -200,8 +200,7 @@ def first_n_days(df: pd.DataFrame, groupby='location', n=10, date_column='date',
         5        B 2023-02-02          6
     """
     if dask:
-        dates = df[['location', 'date']].drop_duplicates(keep='first').groupby('location').apply(
-            lambda d: d.nsmallest(10, columns='date')).reset_index(drop=True).compute()
+        dates = df[['location', 'date']].drop_duplicates(keep='first').sort_values('date').groupby("location").head(n=10).reset_index(drop=True).compute()
 
         return by_criteria(df, dates, on=['location', 'date'])
 

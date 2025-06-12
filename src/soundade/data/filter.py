@@ -200,7 +200,7 @@ def first_n_days(df: dask.dataframe.DataFrame, groupby='location', n=10, date_co
         5        B 2023-02-02          6
     """
     if dask:
-        dates = df[['location', 'date']].drop_duplicates(keep='first').sort_values('date').groupby("location").head(n=10).reset_index(drop=True).compute()
+        dates = df[['location', 'date']].drop_duplicates(keep='first').sort_values('date').groupby("location").head(n=n).reset_index(drop=True).compute()
 
         return by_criteria(df, dates, on=['location', 'date'])
 

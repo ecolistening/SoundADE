@@ -1,17 +1,24 @@
+import datetime as dt
+import numpy as np
 import pandas as pd
+import pyarrow as pa
+
 from dask import dataframe as dd
 from dask.distributed import Client, LocalCluster
-import pyarrow as pa
+from pathlib import Path
 
 from soundade.datasets import datasets
 from soundade.datasets.base import Dataset
 from soundade.datasets.sounding_out_diurnal import SoundingOutDiurnal
-
 from soundade.hpc.cluster import AltairGridEngineCluster
 from soundade.data.solar import solartimes
 from soundade.hpc.arguments import DaskArgumentParser
 
-from pathlib import Path
+from typing import TypeVar
+
+DATE32 = "date32[day]"
+TIMEDELTA64 = "timedelta64[us]"
+DATETIME64 = "datetime64[ns]"
 
 #TODO test parameter does nothing. Remove.
 
@@ -89,33 +96,24 @@ def main(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=1, 
         client = Client(cluster)
         cluster.scale(jobs=jobs)
 
-    # Read data
-    df = dd.read_parquet(infile)
-
-    cols_meta = list(df.columns[:3])
-    cols_data = list(df.columns[3:])
-    
-    if filename:
-        df = SoundingOutDiurnal.filename_metadata(df, cols_data)
-
-    # TODO DawnDusk flag
-    
-    #TODO this might be causing problems.
-    if timeparts:
-        df = SoundingOutDiurnal.timeparts(df)
-
-    if country_habitat:
-        df = SoundingOutDiurnal.country_habitat(df)
-    
-    if solar:
-        df = SoundingOutDiurnal.solar(df, locations=sitesfile)
-    
     outfile = Path(outfile)
+    ddf = dd.read_parquet(infile)
+    ddf = Dataset.timeparts(ddf)
+    ddf = Dataset.solar(ddf, sitesfile=sitesfile)
+    schema = pa.schema([("date", pa.date32()), ("time", pa.time64("us"))])
+
     if compute:
-        df.compute().to_parquet(outfile)
+        df = ddf.compute()
+        df.to_parquet(outfile, schema=schema)
     else:
-        dd.to_parquet(df, outfile, version='2.6', write_index=False, allow_truncated_timestamps=True)#, schema={'date': pa.date32(), 'time': pa.time64('ns')})
-        # dd.to_parquet(df, outfile, write_index=False)
+        dd.to_parquet(
+            ddf,
+            outfile,
+            version='2.6',
+            write_index=False,
+            allow_truncated_timestamps=True,
+            schema=schema,
+        )
 
 if __name__ == '__main__':
     parser = DaskArgumentParser('Extract features from audio files', memory=128, cores=1, jobs=4, npartitions=None)

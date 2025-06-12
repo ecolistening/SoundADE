@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.INFO)
 
 def main(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=1, npartitions=None,
          filename=True, timeparts=True, country_habitat=True, solar=True, compute=False,
-         test=False, local_cluster=True, **kwargs):
+         local_cluster=True, **kwargs):
     """
     Process and append metadata to the input data.
 
@@ -35,7 +35,6 @@ def main(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=1, 
         country_habitat (bool): Flag indicating whether to process country and habitat information of the data.
         solar (bool): Flag indicating whether to process solar information of the data.
         compute (bool): Flag indicating whether to compute and save the processed data. Used mainly for very small datasets and for testing purposes.
-        test (bool): Flag indicating whether to run the function in test mode.
         local_cluster (bool): Flag indicating whether to use a local cluster for computation.
 
     Returns:

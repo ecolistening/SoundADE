@@ -26,7 +26,7 @@ defaults = {
 
 def main(cluster=None, indir=None, outfile=None, memory=0, cores=0, jobs=0,
          queue='general', dataset=None, segment_duration=60.0, frame=0, hop=0, n_fft=0, npartitions=None,
-         local=True, local_threads=1, compute=False, debug=False,
+         local=False, local_threads=1, compute=False, debug=False,
          overwrite_parquet=True, save_preprocessed=None, 
          **kwargs):
     """

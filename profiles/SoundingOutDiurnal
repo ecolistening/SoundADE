@@ -2,4 +2,4 @@
 "--frame=16000"
 "--hop=4000"
 "--n_fft=1024"
-"--frame-seconds=60"
+"--segment-duration=60"

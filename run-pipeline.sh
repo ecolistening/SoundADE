@@ -1,9 +1,6 @@
 #!/bin/bash
 
-export CODE_PATH=$HOME/SoundADE
-cd $CODE_PATH
-
-source $CODE_PATH/settings.env
+source ./settings.env
 
 mkdir -p $DATA_PATH/processed
 mkdir -p $DATA_PATH/run-environment
@@ -20,7 +17,7 @@ usage()
 while getopts "sdbl" flag; do
     case ${flag} in
         s) echo "Running using singularity"
-           singularity run --env "CORES=$CORES" --env "MEM_PER_CPU=$MEM_PER_CPU"--env "STEPS=$STEPS" -B $DATA_PATH:/data $CODE_PATH/pipeline.sif
+           singularity run --env "CORES=$CORES" --env "MEM_PER_CPU=$MEM_PER_CPU" --env "STEPS=$STEPS" -B $DATA_PATH:/data ./pipeline.sif
            ;;
         d) echo "Running using docker"
            sudo docker rm sa-pipeline
@@ -28,10 +25,10 @@ while getopts "sdbl" flag; do
            sudo chown -R $USER:$USER $DATA_PATH  # Fix permissions on sudo written folders
            ;;
         b) echo "Running using slurm batch scheduler"
-           sbatch --cpus-per-task=$CORES --mem-per-cpu=$MEM_PER_CPU $CODE_PATH/slurm/schedule-pipeline.sh
+           sbatch --cpus-per-task=$CORES --mem-per-cpu=$MEM_PER_CPU ./slurm/schedule-pipeline.sh
            ;;
         l) echo "Running in local anaconda environment"
-           $CODE_PATH/pipeline-steps.sh -l
+           ./pipeline-steps.sh -l
            ;;
         *) usage
     esac

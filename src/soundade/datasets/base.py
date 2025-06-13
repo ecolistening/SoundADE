@@ -13,12 +13,20 @@ from pathlib import Path
 from typing import Any, List, Iterable, Tuple, Dict
 
 from soundade.audio.feature.vector import Features
-from soundade.data.bag import create_file_load_dictionary, load_audio_from_path, extract_features_from_audio, \
-    reformat_for_dataframe, power_spectra_from_audio, log_features, transform_features, extract_banded_audio, \
-    remove_dc_offset, high_pass_filter, extract_scalar_features_from_audio
+from soundade.data.bag import (
+    create_file_load_dictionary,
+    load_audio_from_path,
+    extract_features_from_audio,
+    reformat_for_dataframe,
+    power_spectra_from_audio,
+    log_features,
+    transform_features,
+    extract_banded_audio,
+    remove_dc_offset,
+    high_pass_filter,
+    extract_scalar_features_from_audio,
+)
 
-# TODO This is a hack and needs to be removed
-from soundade.data.filter import channel1
 from soundade.data.metadata import timeparts
 from soundade.data.solar import solartimes
 
@@ -41,7 +49,7 @@ class Dataset:
         return True
 
     @classmethod
-    def load(cls, directory, partition_size=None, npartitions=None) -> db.Bag:
+    def load(cls, directory, segment_duration=None, partition_size=None, npartitions=None) -> db.Bag:
         '''Load audio files from a directory into a Dask Bag.
 
         If any file selection can be performed before audio loading, it should be done here.
@@ -62,12 +70,11 @@ class Dataset:
         file_list = list(Path(directory).rglob('*.[wW][aA][vV]'))
 
         logging.info('Creating load dictionary')
-        # Break files into parts
-        file_d = create_file_load_dictionary(file_list)
-        logging.info(f'Loaded {len(file_d)} files')
+        file_d = create_file_load_dictionary(file_list, seconds=segment_duration)
+        logging.info(f'Loaded {len(file_d)} file segments')
 
         file_d = list(filter(cls.prefilter_file_dictionary, file_d))
-        logging.info(f'Filtered to {len(file_d)} files')
+        logging.info(f'Filtered to {len(file_d)} file segments')
 
         logging.info('Loading files in Dask')
         # Load the files from the sequence
@@ -107,6 +114,8 @@ class Dataset:
             'path': file path [string],
             'file': file name [string],
             'sr': sample rate [int]
+            'start_time': start time relative to timestamp (seconds) [float]
+            'end_time': end time relative to timestamp (seconds) [float]
             'frame length': frame length in samples [int],
             'hop length': hop length in samples [int],
             'n fft': number of samples per fft [int],
@@ -136,13 +145,6 @@ class Dataset:
         return ddf
 
     @staticmethod
-    def to_parquet(ddf: dd.DataFrame, path: Path, compute=False, **kwargs):
-        if compute:
-            ddf.compute().to_parquet(path, **kwargs)
-        else:
-            dd.to_parquet(ddf, path, version='2.6', allow_truncated_timestamps=True, write_index=False, **kwargs)
-
-    @staticmethod
     def timeparts(
         ddf: dd.DataFrame
     ) -> dd.DataFrame:
@@ -154,7 +156,7 @@ class Dataset:
     @staticmethod
     def solar(
         ddf: dd.DataFrame,
-        sitesfile: str
+        locations: str
     ) -> dd.DataFrame:
         meta = pd.concat([ddf.dtypes, pd.Series({
             'dawn': "datetime64[ns]",
@@ -173,7 +175,14 @@ class Dataset:
         })])
         ddf = ddf.map_partitions(
             solartimes,
-            locations=sitesfile,
+            locations=locations,
             meta=pd.DataFrame(columns=meta.index.to_list()).astype(meta.to_dict()),
         )
         return ddf
+
+    @staticmethod
+    def to_parquet(ddf: dd.DataFrame, path: Path, compute=False, **kwargs):
+        if compute:
+            ddf.compute().to_parquet(path, **kwargs)
+        else:
+            dd.to_parquet(ddf, path, version='2.6', allow_truncated_timestamps=True, write_index=False, **kwargs)

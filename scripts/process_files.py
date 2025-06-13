@@ -24,9 +24,8 @@ defaults = {
     'n_fft': 2048,
 }
 
-
 def main(cluster=None, indir=None, outfile=None, memory=0, cores=0, jobs=0,
-         queue='general', dataset=None, frame=0, hop=0, n_fft=0, npartitions=None,
+         queue='general', dataset=None, segment_duration=60.0, frame=0, hop=0, n_fft=0, npartitions=None,
          local=True, local_threads=1, compute=False, debug=False,
          overwrite_parquet=True, save_preprocessed=None, 
          **kwargs):
@@ -41,6 +40,7 @@ def main(cluster=None, indir=None, outfile=None, memory=0, cores=0, jobs=0,
         cores (int, optional): Number of CPU cores per worker. Defaults to 8.
         jobs (int, optional): Number of worker jobs to start. Defaults to 12.
         dataset (str, optional): Name of the dataset to use. The name of a dataset class defined in soundade.datasets. Required.
+        segment_duration (float, optional): Segment duration for audio. Defaults to 60s.
         frame (int, optional): Frame size for feature extraction. Defaults to 16000.
         hop (int, optional): Hop size for feature extraction. Defaults to 4000.
         n_fft (int, optional): Number of FFT points for feature extraction. Defaults to 16000.
@@ -83,20 +83,17 @@ def main(cluster=None, indir=None, outfile=None, memory=0, cores=0, jobs=0,
 
     ds: Dataset = datasets[dataset]
 
-    b = ds.load(indir, npartitions=npartitions)
+    b = ds.load(indir, segment_duration=segment_duration, npartitions=npartitions)
 
     if save_preprocessed is not None:
         Path(save_preprocessed).mkdir(parents=True, exist_ok=True)
 
-    #b = ds.preprocess(b, save=save_preprocessed)
+    b = ds.preprocess(b, save=save_preprocessed)
 
-    # Extract all of the features
     b = ds.extract_features(b, frame, hop, n_fft)
 
-    # Convert to dataframe format
     ddf = ds.to_dataframe(b)
 
-    # Extract metadata
     ddf = ds.metadata(ddf)
 
     ds.to_parquet(ddf, path=outfile, overwrite=overwrite_parquet)
@@ -111,7 +108,7 @@ if __name__ == '__main__':
     parser.add_argument('--indir', default=None, help='Folder containing input files.')
 
     parser.add_argument('--dataset', type=str, help='Which dataset to use')
-
+    parser.add_argument('--segment-duration', default=60.0, type=float, help='Duration for chunking audio segments (defaults to 60s). Specify -1 to use full clip.')
     parser.add_argument('--frame', type=int, help='Number of audio frames for a feature frame.')
     parser.add_argument('--hop', type=int, help='Number of audio frames for the hop.')
     parser.add_argument('--n_fft', type=int, help='Number of audio frames for the n_fft.')

@@ -69,8 +69,8 @@ def main(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=1, 
 
     outfile = Path(outfile)
     ddf = dd.read_parquet(infile)
-    ddf = Dataset.timeparts(ddf)
-    ddf = Dataset.solar(ddf, sitesfile=sitesfile)
+    ddf = Dataset.time_parts(ddf)
+    ddf = Dataset.solar(ddf, locations=sitesfile)
 
     if compute:
         df = ddf.compute()

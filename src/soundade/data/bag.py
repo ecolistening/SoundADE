@@ -21,38 +21,34 @@ def copy_except_audio(d: Dict):
     return dict([k, d[k]] for k in set(list(d.keys())) - {'audio'})
 
 
-def create_file_load_dictionary(files: List, sr=None):
+def create_file_load_dictionary(
+    file_paths: List[str],
+    seconds: float | None = None,
+    sr: int = None,
+):
     """
-    
-    :param files: 
+    Definition for librosa to load audio files based on duration in seconds. Defaults to max duration
+
+    :param files: List of file paths
+    :param seconds: Duration of each audio segment
     :param sr: Leaving sr as the default None ensures that librosa will load the file at its native sample rate. 
-    :return: 
+    :return:
     """
-    audio_dicts = []
-    for f in files:
-        d = {
-            'path': f,
-            'sr': sr,
-        }
-        audio_dicts.append(d)
-
-    return audio_dicts
-
-
-def create_file_segment_load_dictionary(files: List, seconds: float = 60.0, sr=None):
     audio_segments_dicts = []
-    for f in files:
-        duration = librosa.get_duration(filename=f, sr=sr)
+    for path in file_paths:
+        duration = librosa.get_duration(path=path)
+        seconds = duration if seconds == -1 else seconds
+        seconds = seconds or duration
+        # rounds down in case its smaller so clips the end of the audio
         segments = int(duration // seconds)
         for i in range(segments):
             d = {
-                'path': f,
+                'path': path,
                 'sr': sr,
                 'offset': i * seconds,
-                'duration': seconds
+                'duration': seconds,
             }
             audio_segments_dicts.append(d)
-
     return audio_segments_dicts
 
 
@@ -97,44 +93,17 @@ def load_audio_from_path(audio_dict: Dict) -> Dict:
     '''
     try:
         audio, sr = librosa.load(**audio_dict)
-
-        data_dict = {
-            'path': str(audio_dict['path']),
-            'file': audio_dict['path'].name,
-            'audio': audio,
-            'sr': sr
+        return {
+            "path": str(audio_dict["path"]),
+            "file": audio_dict["path"].name,
+            "audio": audio,
+            "sr": sr,
+            "offset": audio_dict["offset"],
+            "duration": audio_dict["duration"],
         }
-
-        return data_dict
     except EOFError as e:
         logging.warning(f"Couldn't load file at {str(audio_dict['path'])}.")
-
         return None
-
-
-def load_audio_segment_from_path(audio_segment_dict: Dict) -> Dict:
-    '''Load audio from a path and place into a dictionary for Bag storage
-
-    :param p: Path of file to load
-    :return: Dict representation of audio file.
-    '''
-    audio, sr = librosa.load(**audio_segment_dict)
-
-    data_dict = {
-        'path': str(audio_segment_dict['path']),
-        'file': audio_segment_dict['path'].name,
-        'audio': audio,
-        'sr': sr
-    }
-
-    # Add these if they exist
-    try:
-        data_dict |= {'offset': audio_segment_dict['offset']}
-        data_dict |= {'duration': audio_segment_dict['duration']}
-    except KeyError as e:
-        pass
-
-    return data_dict
 
 
 def split_audio(audio_dict: Dict, seconds: int = 60) -> List[Dict]:
@@ -212,7 +181,7 @@ def extract_features_from_audio(audio_dict: Dict, frame_length: int = FRAME_LENG
         comp = feature.compute(audio, frame_length=frame_length, hop_length=hop_length, n_fft=n_fft,
                                sr=audio_dict.get('sr'), spectrograms=spectrogram, **kwargs)
         data_dict[feature.name] = comp.flatten().tolist()
-        data_dict['feature length'] = max(len(data_dict[feature.name]), data_dict['feature length'])
+        data_dict['feature_length'] = max(len(data_dict[feature.name]), data_dict['feature_length'])
 
     return data_dict
 

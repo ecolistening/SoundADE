@@ -131,13 +131,8 @@ class SoundingOutDiurnal(Dataset):
     def metadata(ddf: dd.DataFrame) -> dd.DataFrame:
         # Assume dataframe ends with data columns
         cols_data = list(ddf.loc[:, '0':].columns)
-
         ddf = SoundingOutDiurnal.filename_metadata(ddf, cols_data)
-        # ddf = SoundingOutDiurnal.timeparts(ddf)
-        ddf = SoundingOutDiurnal.country_habitat(ddf)  # , use_meta=False)
-
-        # ddf = SoundingOutDiurnal.solar(ddf)
-
+        ddf = SoundingOutDiurnal.country_habitat(ddf)
         # Move meta columns to beginning
         meta_cols = ddf.drop(columns=cols_data).columns
         ddf = ddf[list(meta_cols) + cols_data]

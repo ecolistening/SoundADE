@@ -74,7 +74,6 @@ def main(infile=None, outfile=None, n_days=10, memory=64, cores=4, jobs=1, npart
     # Select first 10 days
     if n_days is not None:
         ddf = first_n_days(ddf, n=n_days, dask=True).persist()
-        print('First n Days (head): ', ddf.head())
         dd.to_parquet(ddf.drop(columns='date'), outfile.with_stem(f'{outfile.stem}_prefilter_2_first_days'), version='2.6',
                 allow_truncated_timestamps=True)
 

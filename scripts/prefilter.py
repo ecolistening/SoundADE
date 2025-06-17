@@ -81,7 +81,7 @@ def main(infile=None, outfile=None, n_days=10, memory=64, cores=4, jobs=1, npart
     # Remove recorders with missing data points
     ddf = days_with_too_few_points(ddf, groupby=['location'], agg_columns=['recorder'], dask=True) # recorders_with_too_few_points(ddf)
 
-    ddf = ddf.drop(columns=['date', '0', '1', '2', '717', '718', '719']).persist().repartition(partition_size="20MB")
+    ddf = ddf.drop(columns=['date', '0', '1', '2', '717', '718', '719']).persist()
 
     dd.to_parquet(ddf, outfile, version='2.6', allow_truncated_timestamps=True)#, schema={'date': pa.date32(), 'time': pa.time64('ns')})
 

@@ -27,7 +27,7 @@ while getopts "sdbl" flag; do
         b) echo "Running using slurm batch scheduler"
            sbatch --cpus-per-task=$CORES --mem-per-cpu=$MEM_PER_CPU ./slurm/schedule-pipeline.sh
            ;;
-        l) echo "Running in local anaconda environment"
+        l) echo "Running locally"
            ./pipeline-steps.sh -l
            ;;
         *) usage

@@ -91,15 +91,14 @@ class NatureSense(Dataset):
     @staticmethod
     def filename_metadata(df: pd.DataFrame, filename_column="path") -> pd.DataFrame:
         metadata = df[filename_column].str.extract(
-            r"/?(?P<recorder_model>[^/]+)/(?P<location>[^/]+)/(?P<recorder>.+?)(?:_[^/]+)?/(?P<timestamp>\d{8}_\d{6})\.wav"
+            r"/?(?P<recorder_model>[^/]+)/(?P<location>[^/]+)/(?P<recorder>.+?)(?:_[^/]+)?/(?P<timestamp>\d{8}_\d{6})\.wav",
             expand=True,
             flags=re.IGNORECASE,
         )
         metadata["timestamp"] = pd.to_datetime(metadata["timestamp"], format="%Y%m%d_%H%M%S")
-        metadata["recorder_model"] = metadata["recorder"].str[:3]
         return (
             df.loc[:, :filename_column]
-            .join(metadata.loc[:, "location":"recorder_model"])
+            .join(metadata.loc[:, "recorder_model":"timestamp"])
             .join(df.loc[:, filename_column:].iloc[:, 1:])
         )
 

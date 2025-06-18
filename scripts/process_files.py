@@ -1,4 +1,5 @@
 import time
+import logging
 from pathlib import Path
 
 from dask import config as cfg
@@ -9,7 +10,11 @@ from soundade.datasets.base import Dataset
 from soundade.hpc.arguments import DaskArgumentParser
 from soundade.hpc.cluster import clusters
 
-cfg.set({'distributed.scheduler.worker-ttl': None})
+logging.basicConfig(level=logging.INFO)
+
+cfg.set({
+    "distributed.scheduler.worker-ttl": None
+})
 
 # Defaults are set for running in the container
 defaults = {
@@ -65,7 +70,7 @@ def main(cluster=None, indir=None, outfile=None, memory=0, cores=0, jobs=0,
         # Start cluster
         cluster = clusters[cluster](cores=cores, memory=memory,
                                     queue=queue, name=None)
-        print(cluster.job_script())
+        logging.info(cluster.job_script())
         cluster.scale(jobs=jobs)
         client = Client(cluster)
     else:
@@ -77,7 +82,7 @@ def main(cluster=None, indir=None, outfile=None, memory=0, cores=0, jobs=0,
         client = Client(n_workers=cores,
                         threads_per_worker=local_threads,
                         memory_limit=memory_per_worker)
-        print(client)
+        logging.info(client)
 
     outfile = Path(outfile)
 
@@ -127,6 +132,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    print(args)
+    logging.info(args)
 
     main(**vars(args))

@@ -1,0 +1,13 @@
+services:
+  pipeline:
+    container_name: soundade
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - /media/data0/nature_sense_mini/Raw_Data/Audiomoths/Knepp:/data
+      - ./profiles/NatureSense:/data/run-environment/profile
+    env_file:
+      - .env
+    tty: true
+    stdin_open: true

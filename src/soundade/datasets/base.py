@@ -14,6 +14,7 @@ from typing import Any, List, Iterable, Tuple, Dict
 
 from soundade.audio.feature.vector import Features
 from soundade.data.bag import (
+    valid_audio_file,
     create_file_load_dictionary,
     load_audio_from_path,
     extract_features_from_audio,
@@ -56,33 +57,43 @@ class Dataset:
 
         Bag entries are dictionaries with the format:
         data_dict = {
-            'path': file path [string],
-            'file': file name [string],
-            'audio': raw audio [np.array],
-            'sr': sample rate [int]
+            "path": file path [string],
+            "file": file name [string],
+            "audio": raw audio [np.array],
+            "sr": sample rate [int],
+            "offset": [float32],
+            "duration": [float32],
         }
 
         :param directory:
         :param npartitions:
         :return:
         '''
-        logging.info('Getting file list')
-        file_list = list(Path(directory).rglob('*.[wW][aA][vV]'))
+        logging.info("Recursively discovering audio files...")
+        file_list = list(Path(directory).rglob("*.[wW][aA][vV]"))
 
-        logging.info('Creating load dictionary')
-        file_d = create_file_load_dictionary(file_list, seconds=segment_duration)
-        logging.info(f'Loaded {len(file_d)} file segments')
+        logging.info(f"{len(file_list)} audio files found.")
+        b = db.from_sequence(file_list)
 
-        file_d = list(filter(cls.prefilter_file_dictionary, file_d))
-        logging.info(f'Filtered to {len(file_d)} file segments')
+        logging.info("Filtering corrupt audio...")
+        b = b.filter(valid_audio_file)
 
-        logging.info('Loading files in Dask')
-        # Load the files from the sequence
-        b = db.from_sequence(file_d, npartitions=npartitions)
-        logging.info(f'Partitions after load: {b.npartitions}')
+        logging.info(f"Chunking into segments of duration {segment_duration}...")
+        b = b.map(create_file_load_dictionary, seconds=segment_duration)
+
+        logging.info(f"Applying dataset specific filter...")
+        b = b.filter(cls.prefilter_file_dictionary)
+
+        audio_segment_dicts = b.flatten().compute()
+        logging.info(f'Filtered to {len(audio_segment_dicts)} file segments.')
+
+        logging.info(f"Partitioning segments")
+        b = db.from_sequence(audio_segment_dicts, npartitions=npartitions)
+
+        logging.info(f"Partitions after load: {b.npartitions}. Loading audio files into memory...")
         b = b.map(load_audio_from_path).filter(lambda d: d is not None)
-        logging.info(f'Partitions after flatten: {b.npartitions}')
 
+        logging.info(f'Partitions after flatten: {b.npartitions}')
         return b
 
     @staticmethod

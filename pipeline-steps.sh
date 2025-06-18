@@ -1,9 +1,8 @@
 #!/bin/bash
 
-IFS=':' read -ra STEPS_ARRAY <<< "$STEPS"
+# IFS=':' read -ra STEPS_ARRAY <<< "$STEPS"
 
 # if [[ ${STEPS_ARRAY[0]} = true ]] ; then
-echo "Process files"
 xargs -a $PROFILE_PATH \
     python ./scripts/process_files.py \
     "--indir=$DATA_PATH" \
@@ -93,8 +92,8 @@ xargs -a $PROFILE_PATH \
 #         "--memory=$MEM_PER_CPU"
 # fi
 
-# if [[ -n "$GIT_COMMIT" ]]; then
-#     echo $GIT_COMMIT > $DATA_PATH/run-environment/commit.hash;
-# else
-#     git rev-parse HEAD > $DATA_PATH/run-environment/commit.hash;
-# fi
+if [[ -n "$GIT_COMMIT" ]]; then
+    echo $GIT_COMMIT > $DATA_PATH/run-environment/commit.hash;
+else
+    git rev-parse HEAD > $DATA_PATH/run-environment/commit.hash;
+fi

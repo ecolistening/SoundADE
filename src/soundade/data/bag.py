@@ -9,6 +9,7 @@ import maad.features
 import maad.sound
 import numpy as np
 import scipy
+import soundfile
 
 from soundade.audio.feature.scalar import Features as ScalarFeatures
 from soundade.audio.feature.vector import Features, do_spectrogram
@@ -16,40 +17,39 @@ from soundade.audio.filter import dc_offset
 
 FRAME_LENGTH, HOP_LENGTH = 16000, 4000
 
+logging.basicConfig(level=logging.INFO)
 
 def copy_except_audio(d: Dict):
     return dict([k, d[k]] for k in set(list(d.keys())) - {'audio'})
 
 
 def create_file_load_dictionary(
-    file_paths: List[str],
+    path: List[str],
     seconds: float | None = None,
     sr: int = None,
 ):
     """
     Definition for librosa to load audio files based on duration in seconds. Defaults to max duration
 
-    :param files: List of file paths
+    :param file_path: Path to an audio file
     :param seconds: Duration of each audio segment
     :param sr: Leaving sr as the default None ensures that librosa will load the file at its native sample rate. 
     :return:
     """
-    audio_segments_dicts = []
-    for path in file_paths:
-        duration = librosa.get_duration(path=path)
-        seconds = duration if seconds == -1 else seconds
-        seconds = seconds or duration
-        # rounds down in case its smaller so clips the end of the audio
-        segments = int(duration // seconds)
-        for i in range(segments):
-            d = {
-                'path': path,
-                'sr': sr,
-                'offset': i * seconds,
-                'duration': seconds,
-            }
-            audio_segments_dicts.append(d)
-    return audio_segments_dicts
+    audio_segment_dicts = []
+    duration = librosa.get_duration(path=path)
+    seconds = duration if seconds == -1 else seconds
+    seconds = seconds or duration
+    segments = int(duration // seconds)
+    for i in range(segments):
+        d = {
+            "path": path,
+            "sr": sr,
+            "offset": i * seconds,
+            "duration": seconds,
+        }
+        audio_segment_dicts.append(d)
+    return audio_segment_dicts
 
 
 def remove_dc_offset(audio_dict: Dict):
@@ -84,6 +84,16 @@ def extract_banded_audio(audio_dict: Dict, bands: Iterable[Tuple[int, int]]):
 
     return audio_dicts
 
+def valid_audio_file(file_path: Dict[str, str]):
+    """
+    Filter function to remove audio files that soundfile cannot parse
+    """
+    try:
+        soundfile.info(file_path)
+        return True
+    except soundfile.LibsndfileError as e:
+        logging.warning(e)
+        return False
 
 def load_audio_from_path(audio_dict: Dict) -> Dict:
     '''Load audio from a path and place into a dictionary for Bag storage

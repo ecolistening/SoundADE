@@ -1,20 +1,34 @@
-FROM continuumio/anaconda3:2023.03-1
+FROM python:3.10-slim
 
-ENV CODE_PATH=/code
-ENV DATA_PATH=/data
-ENV PROFILE_PATH=$DATA_PATH/run-environment/profile
-ENV GIT_COMMIT="Docker doesn't know"
+ENV PATH="/root/.local/bin:/cargo/bin:$PATH"
+ENV DATA_PATH="/data"
+ENV VIRTUAL_ENV_PATH="/code/.venv"
+ENV PROFILE_PATH="/data/run-environment/profile"
+
+RUN mkdir -p /code /cargo
+
+RUN apt-get update && \
+  apt-get install --no-install-recommends -y \
+  curl \
+  git \
+  ffmpeg && \
+  apt-get clean && \
+  rm -rf /var/lib/apt/lists/*
+
+RUN curl -LsSf https://astral.sh/uv/install.sh | CARGO_HOME=/cargo sh
+
+COPY uv.lock pyproject.toml /code/
+COPY src /code/src
+COPY scripts /code/scripts
+COPY pipeline-steps.sh /code/pipeline-steps.sh
+COPY README.md /code/README.md
+
 WORKDIR /code
 
-# Create the environment:
-COPY environment.yml .
-RUN conda env create -f environment.yml
-COPY src/soundade/ /code/src/soundade/
-COPY pyproject.toml /code/pyproject.toml
-RUN conda run -n soundade python -m pip install /code
+RUN uv venv $VIRTUAL_ENV_PATH
+RUN . $VIRTUAL_ENV_PATH/bin/activate
+RUN uv sync --no-cache --link-mode=copy
 
-# The code to run when container is started:
-COPY scripts/ /code/scripts/
-COPY pipeline-steps.sh /code/pipeline-steps.sh
+ENV PYTHONPATH="/code/src"
 
-ENTRYPOINT ["bash", "/code/pipeline-steps.sh"]
+ENTRYPOINT ["/bin/bash", "-c", "cd /code && . /code/.venv/bin/activate && ./pipeline-steps.sh"]

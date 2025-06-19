@@ -15,7 +15,6 @@ def find_sun(
 ) -> Dict[str, Any]:
     loc = LocationInfo(
         name=r.location,
-        region=r.country,
         timezone=r.timezone,
         latitude=r.latitude,
         longitude=r.longitude
@@ -28,7 +27,7 @@ tod_cols = ['dawn', 'sunrise', 'noon', 'sunset', 'dusk']
 def solartimes(
     dataframe: pd.DataFrame,
     locations: pd.DataFrame | Path | str,
-    join_columns: List[str] = ["location", "recorder"],
+    join_columns: List[str] = ["location", "site"],
 ) -> pd.DataFrame:
     """
     Calculate solar event times (dawn, sunrise, sunset, dusk) for each timestamp in the given dataframe.
@@ -65,6 +64,7 @@ def solartimes(
 
     assert type(locations) == pd.DataFrame, "'locations' is not a pandas DataFrame"
 
+    # TODO: add validation for the relevant required columns in locations
     # merge location information
     df = dataframe.merge(locations, on=join_columns, how="left")
 

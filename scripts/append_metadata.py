@@ -88,9 +88,8 @@ def main(
     outfile = Path(outfile)
     ddf = dd.read_parquet(infile)
     ddf = ds.metadata(ddf)
-    import code; code.interact(local=locals())
-    # ddf = ds.time_parts(ddf)
-    # ddf = ds.solar(ddf, locations=sitesfile)
+    ddf = ds.timeparts(ddf)
+    ddf = ds.solar(ddf, locations=sitesfile)
 
     if compute:
         df = ddf.compute()
@@ -106,6 +105,12 @@ def main(
 
 if __name__ == '__main__':
     parser = DaskArgumentParser('Extract features from audio files', memory=128, cores=1, jobs=4, npartitions=None)
+
+    parser.add_argument('--dataset', type=str, help='Which dataset to use')
+    parser.add_argument('--segment-duration', default=60.0, type=float, help='Duration for chunking audio segments (defaults to 60s). Specify -1 to use full clip.')
+    parser.add_argument('--frame', type=int, help='Number of audio frames for a feature frame.')
+    parser.add_argument('--hop', type=int, help='Number of audio frames for the hop.')
+    parser.add_argument('--n_fft', type=int, help='Number of audio frames for the n_fft.')
 
     parser.add_argument('--sitesfile', default=None, help='Parquet file containing site information.')
 

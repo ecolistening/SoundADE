@@ -70,7 +70,7 @@ class NatureSense(Dataset):
         return pd.Series({
             "recorder_model": "string",
             "location": "string",
-            "recorder": "string",
+            "site": "string",
             "timestamp": "datetime64[ns]",
         })
 
@@ -91,12 +91,16 @@ class NatureSense(Dataset):
     @staticmethod
     def filename_metadata(df: pd.DataFrame, filename_column="path") -> pd.DataFrame:
         logging.info("Appending file metadata")
+        # TODO: HACK /data is hard coded to handle docker, figure out general approach for path
         metadata = df[filename_column].str.extract(
-            r"/?(?P<recorder_model>[^/]+)/(?P<location>[^/]+)/(?P<recorder>.+?)(?:_[^/]+)?/(?P<timestamp>\d{8}_\d{6})\.wav",
+            r"/data/?(?P<recorder_model>[^/]+)/(?P<location>[^/]+)/"
+            r"(?P<site>[^/_]+_[^/_]+)_(?:[^/]+)/(?P<timestamp>\d{8}_\d{6})\.wav",
             expand=True,
             flags=re.IGNORECASE,
         )
         metadata["timestamp"] = pd.to_datetime(metadata["timestamp"], format="%Y%m%d_%H%M%S")
+        # TODO: why do this? surely the index is preserved?
+        # Just return the relevant information and join the columns after mapping
         return (
             df.loc[:, :filename_column]
             .join(metadata.loc[:, "recorder_model":"timestamp"])

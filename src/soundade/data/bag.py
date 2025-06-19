@@ -19,6 +19,7 @@ FRAME_LENGTH, HOP_LENGTH = 16000, 4000
 
 logging.basicConfig(level=logging.INFO)
 
+
 def copy_except_audio(d: Dict):
     return dict([k, d[k]] for k in set(list(d.keys())) - {'audio'})
 

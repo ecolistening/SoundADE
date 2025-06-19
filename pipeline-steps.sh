@@ -3,14 +3,14 @@
 # IFS=':' read -ra STEPS_ARRAY <<< "$STEPS"
 
 # if [[ ${STEPS_ARRAY[0]} = true ]] ; then
-# xargs -a $PROFILE_PATH \
-#     python ./scripts/process_files.py \
-#     "--indir=$DATA_PATH" \
-#     "--outfile=$DATA_PATH/processed/processed.parquet" \
-#     "--cores=$CORES" \
-#     "--local" \
-#     "--local_threads=1" \
-#     "--memory=$MEM_PER_CPU"
+xargs -a $PROFILE_PATH \
+    python ./scripts/process_files.py \
+    "--indir=$DATA_PATH" \
+    "--outfile=$DATA_PATH/processed/processed.parquet" \
+    "--cores=$CORES" \
+    "--local" \
+    "--local_threads=1" \
+    "--memory=$MEM_PER_CPU"
 # fi
 
 # if [[ ${STEPS_ARRAY[1]} = true ]] ; then

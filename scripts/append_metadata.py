@@ -17,9 +17,23 @@ from soundade.hpc.arguments import DaskArgumentParser
 
 logging.basicConfig(level=logging.INFO)
 
-def main(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=1, npartitions=None,
-         filename=True, timeparts=True, country_habitat=True, solar=True, compute=False,
-         local_cluster=True, **kwargs):
+def main(
+    infile=None,
+    outfile=None,
+    sitesfile=None,
+    memory=64,
+    cores=4,
+    jobs=1,
+    npartitions=None,
+    dataset=None,
+    filename=True,
+    timeparts=True,
+    country_habitat=True,
+    solar=True,
+    compute=False,
+    local_cluster=True,
+    **kwargs
+):
     """
     Process and append metadata to the input data.
 
@@ -30,6 +44,7 @@ def main(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=1, 
         cores (int): Number of CPU cores to use for the computation.
         jobs (int): Number of parallel jobs to run.
         npartitions (int): Number of partitions to repartition the data into.
+        dataset (str, optional): Name of the dataset to use. The name of a dataset class defined in soundade.datasets. Required.
         filename (bool): Flag indicating whether to append filename metadata to the data.
         timeparts (bool): Flag indicating whether to process time parts of the data.
         country_habitat (bool): Flag indicating whether to process country and habitat information of the data.
@@ -67,10 +82,15 @@ def main(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=1, 
         client = Client(cluster)
         cluster.scale(jobs=jobs)
 
+    assert dataset in datasets, f"Unsupported dataset '{dataset}'"
+    ds: Dataset = datasets[dataset]
+
     outfile = Path(outfile)
     ddf = dd.read_parquet(infile)
-    ddf = Dataset.time_parts(ddf)
-    ddf = Dataset.solar(ddf, locations=sitesfile)
+    ddf = ds.metadata(ddf)
+    import code; code.interact(local=locals())
+    # ddf = ds.time_parts(ddf)
+    # ddf = ds.solar(ddf, locations=sitesfile)
 
     if compute:
         df = ddf.compute()

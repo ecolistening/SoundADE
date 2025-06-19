@@ -84,6 +84,8 @@ def main(cluster=None, indir=None, outfile=None, memory=0, cores=0, jobs=0,
                         memory_limit=memory_per_worker)
         logging.info(client)
 
+    start_time = time.time()
+
     outfile = Path(outfile)
 
     ds: Dataset = datasets[dataset]
@@ -103,8 +105,7 @@ def main(cluster=None, indir=None, outfile=None, memory=0, cores=0, jobs=0,
 
     ds.to_parquet(ddf, path=outfile, overwrite=overwrite_parquet)
 
-    if compute:
-        ds.to_parquet(ddf, path=outfile.with_stem(f'{outfile.stem}_computed'), compute=True)
+    logging.info(f"Time taken: {time.time() - start_time}")
 
 
 if __name__ == '__main__':

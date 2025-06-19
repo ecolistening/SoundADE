@@ -145,6 +145,7 @@ class Dataset:
 
     @staticmethod
     def to_dataframe(b: db.Bag, data_keys: List = None, columns_key=None) -> dd.DataFrame:
+        logging.info("Remapping to dataframe")
         b = b.map(reformat_for_dataframe, data_keys=data_keys, columns_key=columns_key).flatten()
 
         ddf = b.to_dataframe()
@@ -153,6 +154,7 @@ class Dataset:
 
     @staticmethod
     def metadata(ddf: dd.DataFrame) -> dd.DataFrame:
+        logging.info("Appending metadata")
         return ddf
 
     @staticmethod
@@ -193,6 +195,7 @@ class Dataset:
 
     @staticmethod
     def to_parquet(ddf: dd.DataFrame, path: Path, compute=False, **kwargs):
+        logging.info(f"Saving to parquet at {path}")
         if compute:
             ddf.compute().to_parquet(path, **kwargs)
         else:

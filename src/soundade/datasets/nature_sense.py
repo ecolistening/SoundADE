@@ -90,6 +90,7 @@ class NatureSense(Dataset):
 
     @staticmethod
     def filename_metadata(df: pd.DataFrame, filename_column="path") -> pd.DataFrame:
+        logging.info("Appending file metadata")
         metadata = df[filename_column].str.extract(
             r"/?(?P<recorder_model>[^/]+)/(?P<location>[^/]+)/(?P<recorder>.+?)(?:_[^/]+)?/(?P<timestamp>\d{8}_\d{6})\.wav",
             expand=True,

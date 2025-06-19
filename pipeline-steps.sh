@@ -3,26 +3,27 @@
 # IFS=':' read -ra STEPS_ARRAY <<< "$STEPS"
 
 # if [[ ${STEPS_ARRAY[0]} = true ]] ; then
-xargs -a $PROFILE_PATH \
-    python ./scripts/process_files.py \
-    "--indir=$DATA_PATH" \
-    "--outfile=$DATA_PATH/processed/processed.parquet" \
-    "--cores=$CORES" \
-    "--local" \
-    "--local_threads=1" \
-    "--memory=$MEM_PER_CPU"
+# xargs -a $PROFILE_PATH \
+#     python ./scripts/process_files.py \
+#     "--indir=$DATA_PATH" \
+#     "--outfile=$DATA_PATH/processed/processed.parquet" \
+#     "--cores=$CORES" \
+#     "--local" \
+#     "--local_threads=1" \
+#     "--memory=$MEM_PER_CPU"
 # fi
 
 # if [[ ${STEPS_ARRAY[1]} = true ]] ; then
 # echo "Append metadata"
-# python ./scripts/append_metadata.py \
-#     "--infile=$DATA_PATH/processed/processed.parquet" \
-#     "--outfile=$DATA_PATH/processed/solar.parquet" \
-#     "--sitesfile=$DATA_PATH/site_locations.parquet" \
-#     "--local" \
-#     -F -C -T \
-#     "--cores=$CORES" \
-#     "--memory=$MEM_PER_CPU"
+xargs -a $PROFILE_PATH \
+    python ./scripts/append_metadata.py \
+    "--infile=$DATA_PATH/processed/processed.parquet" \
+    "--outfile=$DATA_PATH/processed/solar.parquet" \
+    "--sitesfile=$DATA_PATH/site_locations.parquet" \
+    "--local" \
+    -F -C -T \
+    "--cores=$CORES" \
+    "--memory=$MEM_PER_CPU"
 # fi
 
 # if [[ ${STEPS_ARRAY[2]} = true ]] ; then

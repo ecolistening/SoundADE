@@ -24,7 +24,7 @@ def copy_except_audio(d: Dict):
 
 
 def create_file_load_dictionary(
-    path: List[str],
+    path: str,
     seconds: float | None = None,
     sr: int = None,
 ):

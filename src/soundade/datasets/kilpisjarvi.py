@@ -1,15 +1,22 @@
-import logging
-import re
-from datetime import datetime
-from importlib.resources import files
-from pathlib import Path
-from typing import List, Iterable, Tuple, Dict
-
 import dask.bag as db
+import datetime as dt
+import logging
 import numpy as np
 import pandas as pd
+import re
 import soundfile as sf
+import uuid
+
 from dask import dataframe as dd
+from importlib.resources import files
+from pathlib import Path
+from typing import (
+    Any,
+    List,
+    Iterable,
+    Tuple,
+    Dict,
+)
 
 from soundade.data.bag import (
     create_file_load_dictionary,
@@ -27,66 +34,63 @@ from soundade.data.bag import (
 from soundade.datasets.base import Dataset
 
 logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 class Kilpisjarvi(Dataset):
     @staticmethod
-    def preprocess(b: db.Bag, save=None) -> db.Bag:
-        b = b.map(remove_dc_offset)
-        b = b.map(high_pass_filter, fcut=300, forder=2, fname='butter', ftype='highpass')
-
-        if save is not None:
-            logging.info(f'Saving wav files to {save}.')
-            b.map(Dataset.write_wav, outpath=save).compute()
-
-        return b
-
-    @staticmethod
-    def to_dataframe(b: db.Bag, data_keys: List = None, columns_key=None) -> dd.DataFrame:
-        '''Override the default to_dataframe to return a single row from each bag.'''
-        b = b.map(
-            reformat_for_dataframe,
-            data_keys=data_keys,
-            columns_key=columns_key,
-            scalar_values=True
-        ).flatten()
-        ddf = b.to_dataframe()
-        return ddf
-
-    @staticmethod
-    def extract_features(b: db.Bag, frame: int, hop: int, n_fft: int, **kwargs) -> db.Bag:
-        '''Override the default extract features to extract a single feature from each file.'''
-        logging.info('Extracting Kilpisjarvi Features')
-        b = b.map(
-            extract_scalar_features_from_audio,
-            frame_length=frame,
-            hop_length=hop,
-            n_fft=n_fft,
-            **kwargs
-        )
-        return b
+    def index_sites(root_dir: str | Path) -> pd.DataFrame:
+        """
+        Index sites by extracting co-ordinate data from SongMeterMini's Summary.txt file
+        """
+        recorder_id_regex = re.compile("^([A-Z]{3}\d{5})_Summary.txt$")
+        hemisphere_to_sign = {"N": 1, "S": -1, "E": 1, "W": -1}
+        site_data = []
+        for file_path in root_dir.rglob("*"):
+            match = recorder_id_regex.match(file_path.name)
+            if not match:
+                continue
+            try:
+                row = next(pd.read_csv(file_path, chunksize=1)).iloc[0]
+                latitude, lat_hemi, longitude, lon_hemi = row[2:6]
+                site_data.append({
+                    "site_id": str(uuid.uuid4()),
+                    "site_name": f"{file_path.parent.name}/{match.group(1)}",
+                    "location": file_path.parent.name,
+                    "recorder": match.group(1),
+                    "latitude": float(latitude) * hemisphere_to_sign[str(lat_hemi).strip()],
+                    "longitude": float(longitude) * hemisphere_to_sign[str(lon_hemi).strip()],
+                    "country": "Finland",
+                    "timezone": "Europe/Helsinki",
+                })
+            except Exception as e:
+                log.warning(e)
+                continue
+        return pd.DataFrame(site_data)
 
     @staticmethod
-    def metadata_fields():
-        return pd.Series({
-            "location": "string",
-            "recorder": "string",
-            "timestamp": "datetime64[ns]",
-            "recorder_model": "string",
+    def extract_site_name(audio_dict: Dict[str, Any]) -> Dict[str, Any]:
+        file_path = audio_dict["local_file_path"]
+        match = re.search(r"([^/]+)/Data/(SMA\d+)", file_path, re.IGNORECASE)
+        if match is None:
+            log.warning(f"Failed to extract site name on {file_path}")
+            return audio_dict
+        site_name = f"{match.group(1)}/{match.group(2)}"
+        audio_dict.update({
+            "site_name": site_name,
         })
+        return audio_dict
 
-    @staticmethod
-    def metadata(ddf: dd.DataFrame) -> dd.DataFrame:
-        meta = pd.concat([
-            ddf.dtypes.loc[:'path'],
-            Kilpisjarvi.metadata_fields(),
-            ddf.dtypes.loc["path":].iloc[1:]
-        ])
-        m = pd.DataFrame(columns=meta.index.to_list())
-        m = m.astype(meta.to_dict())
-
-        ddf = ddf.map_partitions(Kilpisjarvi.filename_metadata, filename_column="path", meta=m)
-
-        return ddf
+    def extract_timestamp(audio_dict: Dict[str, Any]) -> Dict[str, Any]:
+        file_path = audio_dict["local_file_path"]
+        match = re.search(r"(\d{8}_\d{6})\.wav", file_path, re.IGNORECASE)
+        if match is None:
+            log.warning(f"Failed to extract timestamp from {file_path}")
+            return audio_dict
+        timestamp = dt.datetime.strptime(match.group(1), "%Y%m%d_%H%M%S")
+        audio_dict.update({
+            "timestamp": timestamp,
+        })
+        return audio_dict
 
     @staticmethod
     def filename_metadata(df: pd.DataFrame, filename_column="path") -> pd.DataFrame:
@@ -102,17 +106,3 @@ class Kilpisjarvi(Dataset):
             .join(metadata.loc[:, "location":"recorder_model"])
             .join(df.loc[:, filename_column:].iloc[:, 1:])
         )
-
-    @staticmethod
-    def to_dataframe(b: db.Bag, data_keys: List = None, columns_key=None) -> dd.DataFrame:
-        '''Override the default to_dataframe to return a single row from each bag.'''
-        b = b.map(
-            reformat_for_dataframe,
-            data_keys=data_keys,
-            columns_key=columns_key,
-            scalar_values=True
-        ).flatten()
-
-        ddf = b.to_dataframe()
-
-        return ddf

@@ -62,12 +62,3 @@ class Cairngorms(Dataset):
         # Reassemble
         return dataframe.loc[:, :filename_column].join(df.loc[:, 'location':'timestamp']).join(
             dataframe.loc[:, filename_column:].iloc[:, 1:])
-
-    @staticmethod
-    def to_dataframe(b: db.Bag, data_keys: List = None, columns_key=None) -> dd.DataFrame:
-        '''Override the default to_dataframe to return a single row from each bag.'''
-        b = b.map(reformat_for_dataframe, data_keys=data_keys, columns_key=columns_key, scalar_values=True).flatten()
-
-        ddf = b.to_dataframe()
-
-        return ddf

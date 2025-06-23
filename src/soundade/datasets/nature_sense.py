@@ -1,9 +1,16 @@
 import logging
+import datetime as dt
 import re
 from datetime import datetime
 from importlib.resources import files
 from pathlib import Path
-from typing import List, Iterable, Tuple, Dict
+from typing import (
+    Any,
+    List,
+    Iterable,
+    Tuple,
+    Dict,
+)
 
 import dask.bag as db
 import numpy as np
@@ -27,6 +34,7 @@ from soundade.data.bag import (
 from soundade.datasets.base import Dataset
 
 logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 class NatureSense(Dataset):
     @staticmethod
@@ -35,7 +43,7 @@ class NatureSense(Dataset):
         b = b.map(high_pass_filter, fcut=300, forder=2, fname='butter', ftype='highpass')
 
         if save is not None:
-            logging.info(f'Saving wav files to {save}.')
+            log.info(f'Saving wav files to {save}.')
             b.map(Dataset.write_wav, outpath=save).compute()
 
         return b
@@ -55,7 +63,7 @@ class NatureSense(Dataset):
     @staticmethod
     def extract_features(b: db.Bag, frame: int, hop: int, n_fft: int, **kwargs) -> db.Bag:
         '''Override the default extract features to extract a single feature from each file.'''
-        logging.info('Extracting NatureSense Features')
+        log.info('Extracting NatureSense Features')
         b = b.map(
             extract_scalar_features_from_audio,
             frame_length=frame,
@@ -66,40 +74,76 @@ class NatureSense(Dataset):
         return b
 
     @staticmethod
-    def metadata_fields():
-        return pd.Series({
-            "recorder_model": "string",
-            "location": "string",
-            "site": "string",
-            "timestamp": "datetime64[ns]",
-        })
-
-    @staticmethod
     def metadata(ddf: dd.DataFrame) -> dd.DataFrame:
         meta = pd.concat([
             ddf.dtypes.loc[:'path'],
-            NatureSense.metadata_fields(),
+            pd.Series({
+                "recorder_model": "string",
+                "location": "string",
+                "site": "string",
+                "timestamp": "datetime64[ns]",
+                "site_name": "string",
+            }),
             ddf.dtypes.loc["path":].iloc[1:]
         ])
-        m = pd.DataFrame(columns=meta.index.to_list())
-        m = m.astype(meta.to_dict())
 
-        ddf = ddf.map_partitions(NatureSense.filename_metadata, filename_column="path", meta=m)
+        ddf = ddf.map_partitions(
+            NatureSense.filename_metadata,
+            filename_column="path",
+            meta=meta, # TODO: check works
+        )
 
         return ddf
 
     @staticmethod
+    def extract_site_name(audio_dict: Dict[str, Any]) -> Dict[str, Any]:
+        file_path = audio_dict["local_file_path"]
+        audio_moth_match = re.search(r"Audiomoths/([^/]+)/(.+?)_\d{8}", file_path)
+        song_meter_match = re.search(r"Song_Meter_Mini/([^/]+)/[^/]+_([^/_]+)", file_path)
+        match = None
+        if audio_moth_match:
+            match = audio_moth_match
+        elif song_meter_match:
+            match = song_meter_match
+        if match is None:
+            log.warning(f"Failed to extract site name on {file_path}")
+            return audio_dict
+        site_name = f"{match.group(1)}/{match.group(2)}".replace(" ", "_")
+        audio_dict.update({
+            "site_name": site_name,
+        })
+        return audio_dict
+
+    def extract_timestamp(audio_dict: Dict[str, Any]) -> Dict[str, Any]:
+        file_path = audio_dict["local_file_path"]
+        match = re.search(r"(\d{8}_\d{6})\.wav", file_path, re.IGNORECASE)
+        if match is None:
+            log.warning(f"Failed to extract timestamp from {file_path}")
+            return audio_dict
+        timestamp = dt.datetime.strptime(match.group(1), "%Y%m%d_%H%M%S")
+        audio_dict.update({
+            "timestamp": timestamp,
+        })
+        return audio_dict
+
+    @staticmethod
     def filename_metadata(df: pd.DataFrame, filename_column="path") -> pd.DataFrame:
-        logging.info("Appending file metadata")
-        # TODO: HACK /data is hard coded to handle docker, figure out general approach for path
         metadata = df[filename_column].str.extract(
-            r"/data/?(?P<recorder_model>[^/]+)/(?P<location>[^/]+)/"
-            r"(?P<site>[^/_]+_[^/_]+)_(?:[^/]+)/(?P<timestamp>\d{8}_\d{6})\.wav",
+            r".*?/" # match any prefix path
+            "(?P<recorder_model>[^/]+)/" # extract recorder model, e.g. Audiomoths, Song_Meter_Mini
+            "(?P<location>[^/]+)/" # location, e.g. Knepp, Gravetye, etc
+            r"(?P<site>[^/_]+_[^/_]+)_(?:[^/]+)/" # site, e.g. N_SE1, S_SW3
+            "(?P<timestamp>\d{8}_\d{6})\.wav", # timestamp for the format 20250522_123456
             expand=True,
             flags=re.IGNORECASE,
         )
+        # strip trailing 's' and sub out underscores for better presentation
+        metadata["recorder_model"] = metadata["recorder_model"].str.rstrip("s").replace("_", " ")
+        # site_name is used as a site hierarchy in the dashboard
+        metadata["site_name"] = metadata["location"] + "/" + metadata["site"]
+        # timestamp always necessary, only consistent to Audiomoth format the moment
         metadata["timestamp"] = pd.to_datetime(metadata["timestamp"], format="%Y%m%d_%H%M%S")
-        # TODO: why do this? surely the index is preserved?
+        # TODO: why do this? surely the index is preserved? to preserve column order?
         # Just return the relevant information and join the columns after mapping
         return (
             df.loc[:, :filename_column]

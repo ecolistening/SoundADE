@@ -28,7 +28,7 @@ def find_sun(
     )
     solar_dict = {
         "solar_id": str(uuid.uuid4()),
-        "site_id": solar_dict["site_id"],
+        "site_id": str(solar_dict["site_id"]),
         "date": solar_dict["date"],
         **{
             k: s[k].replace(tzinfo=None)

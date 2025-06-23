@@ -39,7 +39,7 @@ def birdnet_species(
         .to_bag(format="dict")
         .filter(lambda file_dict: file_dict["valid"])
         .map(species_probs, min_conf=min_conf)
-        .filter(lambda x: x is None)
+        .filter(len)
         .flatten()
         .to_dataframe(meta=species_probs_meta())
     )

@@ -12,9 +12,11 @@ from pathlib import Path
 from typing import Any, Tuple
 
 from soundade.data.solar import (
+    tod_cols,
     find_sun,
     find_date_and_hour,
     find_solar_boundaries,
+    find_relative_solar,
 )
 from soundade.hpc.arguments import DaskArgumentParser
 from soundade.hpc.cluster import clusters
@@ -65,15 +67,6 @@ def index_solar(
     )
     # stage 1: extract unique solar table, referencing
     log.info("Building solar dataframe containing dawn/dusk/sunrise/sunset information")
-    solar_meta = {
-        "solar_id": "object",
-        "site_id": "string",
-        "dawn": "datetime64[ns]",
-        "sunrise": "datetime64[ns]",
-        "noon": "datetime64[ns]",
-        "sunset": "datetime64[ns]",
-        "dusk": "datetime64[ns]",
-    }
     b = (
         files_ddf[["site_id", "date"]]
         # join location information on site_id for all solar info
@@ -87,15 +80,21 @@ def index_solar(
         .map(find_sun)
     )
     # store in a dataframe
-    solar_ddf = b.to_dataframe()
+    solar_ddf = (
+        b.to_dataframe()
+        .map_partitions(find_solar_boundaries)
+    )
     log.info("Merging with file index, appending times relative to solar timestamps")
     # stage 2: join solar info with the file table and calculate file-specific solar data
+    solar_columns = ["date", *tod_cols]
     files_ddf = (
         files_ddf
         # join on location and date
-        .merge(solar_ddf, on=["site_id", "date"], how="left")
+        .merge(solar_ddf[["site_id", *solar_columns]], on=["site_id", "date"], how="left")
         # extract solar info relative to time
-        .map_partitions(find_solar_boundaries)
+        .map_partitions(find_relative_solar)
+        # drop from files table
+        .drop(solar_columns, axis=1)
     )
 
     if compute:
@@ -121,6 +120,7 @@ def index_solar(
         compute=False,
     )
 
+    log.info(f"Solar queued, will persist to {outfile}")
     log.info(f"Indexing files queued, will overwrite {infile}")
 
     return files_ddf, solar_ddf, files_future, solar_future

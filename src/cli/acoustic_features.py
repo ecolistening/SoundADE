@@ -97,6 +97,20 @@ def acoustic_features(
         .to_dataframe()
     )
 
+    # frames are indexed by string integer on the columns
+    metadata = ddf.iloc[:, :ddf.columns.get_loc(str("0"))]
+    features = ddf.iloc[:, ddf.columns.get_loc(str("0")):]
+
+    # shift so frames are now rows
+    ddf = ddf.melt(
+        id_vars=metadata.columns,
+        value_vars=features.columns,
+        var_name='frame',
+        value_name='value'
+    )
+    # drop any nulls
+    ddf = ddf_long.dropna(subset='value')
+
     if compute:
         df = ddf.compute()
         df.to_parquet(Path(outfile), index=False)
@@ -225,7 +239,7 @@ def get_base_parser():
         help='Number of audio frames for the hop.'
     )
     parser.add_argument(
-        '--n_fft',
+        '--n-fft',
         type=int,
         help='Number of audio frames for the n_fft.'
     )

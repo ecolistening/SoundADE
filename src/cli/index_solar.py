@@ -28,28 +28,6 @@ cfg.set({
     "distributed.scheduler.worker-ttl": None
 })
 
-# time_meta = pd.Series({
-#     "date": "datetime64[ns]",
-#     "hour": "int8",
-# })
-# solar_meta = pd.Series({
-#     "site_id": "string[pyarrow]",
-#     "timestamp": "datetime64[us]",
-#     'dawn': "datetime64[ns]",
-#     'sunrise': "datetime64[ns]",
-#     'noon': "datetime64[ns]",
-#     'sunset': "datetime64[ns]",
-#     'dusk': "datetime64[ns]",
-#     'hours after dawn': "float64",
-#     'hours after sunrise': "float64",
-#     'hours after noon': "float64",
-#     'hours after sunset': "float64",
-#     'hours after dusk': "float64",
-#     'dawn end': "datetime64[ns]",
-#     'dusk start': "datetime64[ns]",
-#     'dddn': "string",
-# })
-
 def index_solar(
     files: dd.DataFrame,
     sites: pd.DataFrame | dd.DataFrame,

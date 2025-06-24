@@ -60,14 +60,6 @@ def acoustic_features(
         .map(remove_dc_offset)
         .map(high_pass_filter, fcut=300, forder=2, fname='butter', ftype='highpass')
     )
-    # log.info(f'Filtered to {len(audio_segment_dicts)} file segments.')
-    # log.info(f"Loading and preprocessing segments")
-    # b = (
-    #     db.from_sequence(audio_segment_dicts, npartitions=npartitions)
-    #     .map(load_audio_from_path)
-    #     .map(remove_dc_offset)
-    #     .map(high_pass_filter, fcut=300, forder=2, fname='butter', ftype='highpass')
-    # )
 
     # if save_preprocessed is not None:
     #     Path(save_preprocessed).mkdir(parents=True, exist_ok=True)
@@ -98,18 +90,15 @@ def acoustic_features(
     )
 
     # frames are indexed by string integer on the columns
-    metadata = ddf.iloc[:, :ddf.columns.get_loc(str("0"))]
-    features = ddf.iloc[:, ddf.columns.get_loc(str("0")):]
-
-    # shift so frames are now rows
+    # melt frames into rows
     ddf = ddf.melt(
-        id_vars=metadata.columns,
-        value_vars=features.columns,
-        var_name='frame',
-        value_name='value'
+        id_vars=ddf.columns[:ddf.columns.get_loc("0")],
+        value_vars=ddf.columns[ddf.columns.get_loc("0"):],
+        var_name="frame",
+        value_name="value",
     )
     # drop any nulls
-    ddf = ddf_long.dropna(subset='value')
+    ddf = ddf.dropna(subset='value')
 
     if compute:
         df = ddf.compute()

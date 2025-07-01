@@ -141,6 +141,9 @@ def days_with_too_few_points(df: pd.DataFrame, groupby=['location'], agg_columns
     daily_count_loc_mean = daily_counts.groupby(groupby)[count_column].transform('mean')
     daily_count_loc_std = daily_counts.groupby(groupby)[count_column].transform('std')
 
+    # Assume datasets with only one aggregator member (date, recorder) should be kept:
+    daily_count_loc_std = daily_count_loc_std.fillna(1.0)
+
     good_dates = daily_counts[np.abs(daily_counts[count_column] - daily_count_loc_mean) / daily_count_loc_std < stds]
 
     return by_criteria(df, good_dates, on=groupby + agg_columns)

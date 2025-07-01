@@ -87,7 +87,7 @@ def main(cluster=None, indir=None, outfile=None, memory=0, cores=0, jobs=0,
     if save_preprocessed is not None:
         Path(save_preprocessed).mkdir(parents=True, exist_ok=True)
 
-    #b = ds.preprocess(b, save=save_preprocessed)
+    b = ds.preprocess(b, save=save_preprocessed)
 
     # Extract all of the features
     b = ds.extract_features(b, frame, hop, n_fft)

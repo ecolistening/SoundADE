@@ -5,10 +5,6 @@ cd $CODE_PATH
 
 source $CODE_PATH/settings.env
 
-mkdir -p $DATA_PATH/processed
-mkdir -p $DATA_PATH/run-environment
-cp $PROFILE_PATH $DATA_PATH/run-environment/profile
-
 usage()
 {
     echo "usage: $0 -s # Run using singularity container"
@@ -17,22 +13,31 @@ usage()
     echo "       $0 -l # Run in local anaconda environment"
 }
 
-while getopts "sdbl" flag; do
-    case ${flag} in
-        s) echo "Running using singularity"
-           singularity run --env "CORES=$CORES" --env "MEM_PER_CPU=$MEM_PER_CPU" --env "STEPS=$STEPS" --network-args="portmap=8787:8787/tcp" -B $DATA_PATH:/data $CODE_PATH/pipeline.sif
-           ;;
-        d) echo "Running using docker"
-           sudo docker rm sa-pipeline
-           sudo docker run --name sa-pipeline -e CORES=$CORES -e MEM_PER_CPU=$MEM_PER_CPU -e STEPS=$STEPS -p 8787:8787 -v $DATA_PATH:/data soundade
-           sudo chown -R $USER:$USER $DATA_PATH  # Fix permissions on sudo written folders
-           ;;
-        b) echo "Running using slurm batch scheduler"
-           sbatch --cpus-per-task=$CORES --mem-per-cpu=$MEM_PER_CPU $CODE_PATH/slurm/schedule-pipeline.sh
-           ;;
-        l) echo "Running in local anaconda environment"
-           $CODE_PATH/pipeline-steps.sh -l
-           ;;
-        *) usage
-    esac
+for DIR in "${SUB_DIRS[@]}"; do
+    DATA_PATH=$DATA_ROOT/$DIR
+    echo "Running pipeline for: $DATA_PATH"
+    mkdir -p $DATA_PATH/processed
+    mkdir -p $DATA_PATH/run-environment
+    cp $PROFILE_PATH $DATA_PATH/run-environment/profile
+    cp $CODE_PATH/settings.env $DATA_PATH/run-environment/settings.env
+
+    while getopts "sdbl" flag; do
+        case ${flag} in
+            s) echo "Running using singularity"
+            singularity run --env "CORES=$CORES" --env "MEM_PER_CPU=$MEM_PER_CPU" --env "STEPS=$STEPS" --network-args="portmap=8787:8787/tcp" -B $DATA_PATH:/data $CODE_PATH/pipeline.sif
+            ;;
+            d) echo "Running using docker"
+            sudo docker rm sa-pipeline
+            sudo docker run --name sa-pipeline -e CORES=$CORES -e MEM_PER_CPU=$MEM_PER_CPU -e STEPS=$STEPS -p 8787:8787 -v $DATA_PATH:/data soundade
+            sudo chown -R $USER:$USER $DATA_PATH  # Fix permissions on sudo written folders
+            ;;
+            b) echo "Running using slurm batch scheduler"
+            sbatch --cpus-per-task=$CORES --mem-per-cpu=$MEM_PER_CPU $CODE_PATH/slurm/schedule-pipeline.sh
+            ;;
+            l) echo "Running in local anaconda environment"
+            $CODE_PATH/pipeline-steps.sh -l
+            ;;
+            *) usage
+        esac
+    done
 done

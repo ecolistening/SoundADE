@@ -2,7 +2,6 @@ FROM continuumio/anaconda3:2023.03-1
 
 ENV CODE_PATH=/code
 ENV DATA_PATH=/data
-ENV PROFILE_PATH=$DATA_PATH/run-environment/profile
 ENV GIT_COMMIT="Docker doesn't know"
 WORKDIR /code
 

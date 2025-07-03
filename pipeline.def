@@ -4,7 +4,6 @@ From: soundade-environment.sif
 %environment
   export CODE_PATH=/code
   export DATA_PATH=/data
-  export PROFILE_PATH=$DATA_PATH/run-environment/profile
   export GIT_COMMIT=$(git rev-parse HEAD)
 
 %files

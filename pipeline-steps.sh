@@ -22,7 +22,7 @@ done
 #
 # Effects:
 # STEP_LOG will be set with the path to the log file "process_files.log"
-# PROFILE_PATH will be set to local copy
+# PROFILE_PATH will be set to local copy and sourced
 set_run_environment () {
     mkdir -p $DATA_PATH/processed/run-environment/"$1"
     PROFILE_PATH=$DATA_PATH/processed/run-environment/"$1"/profile.env

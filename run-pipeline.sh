@@ -48,7 +48,7 @@ for DIR in "${SUB_DIRS[@]}"; do
 
     if [[ $DO_SLURM = true ]] ; then
         echo "Running using slurm batch scheduler"
-        sbatch --cpus-per-task=$CORES --mem-per-cpu=$MEM_PER_CPU $CODE_PATH/slurm/schedule-pipeline.sh
+        sbatch --cpus-per-task=$CORES --mem-per-cpu="${MEM_PER_CPU}G" $CODE_PATH/slurm/schedule-pipeline.sh
     fi
 
     if [[ $DO_LOCAL = true ]] ; then

@@ -20,6 +20,8 @@ for DIR in "${SUB_DIRS[@]}"; do
     cp $PROFILE_PATH $DATA_PATH/processed/run-environment/profile.env
     cp $CODE_PATH/settings.env $DATA_PATH/processed/run-environment/settings.env
 
+    # Reset the getopts index so it can re-run
+    OPTIND=1
     while getopts "sdbl" flag; do
         case ${flag} in
             s) echo "Running using singularity"

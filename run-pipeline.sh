@@ -23,7 +23,7 @@ for DIR in "${SUB_DIRS[@]}"; do
     while getopts "sdbl" flag; do
         case ${flag} in
             s) echo "Running using singularity"
-            singularity run --env "CORES=$CORES" --env "MEM_PER_CPU=$MEM_PER_CPU" --env "STEPS=$STEPS" --network-args="portmap=8787:8787/tcp" -B $DATA_PATH:/data $CODE_PATH/pipeline.sif
+            singularity run --env "CORES=$CORES" --env "MEM_PER_CPU=$MEM_PER_CPU" --env "STEPS=$STEPS" -B $DATA_PATH:/data $CODE_PATH/pipeline.sif
             ;;
             d) echo "Running using docker"
             sudo docker rm sa-pipeline

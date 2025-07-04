@@ -8,7 +8,7 @@
 #Request 30 minutes run time
 #SBATCH -t 0:30:0
 #SBATCH -p short
-#SBATCH --mem 16G
+#SBATCH --mem 64G
 #SBATCH --cpus-per-task 8
 
 cd $HOME/SoundADE

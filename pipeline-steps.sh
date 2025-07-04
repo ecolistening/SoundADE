@@ -25,8 +25,9 @@ done
 # PROFILE_PATH will be set to local copy
 set_run_environment () {
     mkdir -p $DATA_PATH/processed/run-environment/"$1"
-    PROFILE_PATH=$DATA_PATH/processed/run-environment/"$1"/profile
-    cp $DATA_PATH/processed/run-environment/profile $PROFILE_PATH
+    PROFILE_PATH=$DATA_PATH/processed/run-environment/"$1"/profile.env
+    cp $DATA_PATH/processed/run-environment/profile.env $PROFILE_PATH
+    source $PROFILE_PATH
     cp $DATA_PATH/processed/run-environment/settings.env $DATA_PATH/processed/run-environment/"$1"/settings.env
     #Capture environment and git hash for reproducibility
     conda run -n soundade conda env export -c conda-forge -c anaconda -c defaults > $DATA_PATH/processed/run-environment/"$1"/environment.yml
@@ -43,15 +44,17 @@ for STEP in "${STEPS_ARRAY[@]}"; do
     if [[ $STEP -eq 0 ]] ; then
         echo -e "\nProcess audio files\n------"
         set_run_environment "process_files"
-        xargs -a $PROFILE_PATH \
-            $CONDA_PATH/envs/soundade/bin/python $CODE_PATH/scripts/process_files.py \
-            "--indir=$DATA_PATH" \
-            "--outfile=$DATA_PATH/processed/processed.parquet" \
-            "--cores=$CORES" \
-            "--local" \
-            "--local_threads=1" \
-            "--memory=$MEM_PER_CPU" \
-            > $STEP_LOG 2>&1
+        $CONDA_PATH/envs/soundade/bin/python $CODE_PATH/scripts/process_files.py \
+                                             "--indir=$DATA_PATH" \
+                                             "--outfile=$DATA_PATH/processed/processed.parquet" \
+                                             "--dataset=$DATASET" \
+                                             "--frame=$FRAME" \
+                                             "--hop=$HOP" \
+                                             "--n_fft=$N_FFT" \
+                                             "--local" \
+                                             "--cores=$CORES" \
+                                             "--memory=$MEM_PER_CPU" \
+                                             > $STEP_LOG 2>&1
     fi
 
     if [[ $STEP -eq 1 ]] ; then
@@ -149,5 +152,5 @@ for STEP in "${STEPS_ARRAY[@]}"; do
 done
 
 # Remove unneeded copies of run-environment
-rm $DATA_PATH/processed/run-environment/profile
+rm $DATA_PATH/processed/run-environment/profile.env
 rm $DATA_PATH/processed/run-environment/settings.env

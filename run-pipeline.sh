@@ -16,9 +16,8 @@ usage()
 for DIR in "${SUB_DIRS[@]}"; do
     DATA_PATH=$DATA_ROOT/$DIR
     echo "Running pipeline for: $DATA_PATH"
-    mkdir -p $DATA_PATH/processed
     mkdir -p $DATA_PATH/processed/run-environment
-    cp $PROFILE_PATH $DATA_PATH/processed/run-environment/profile
+    cp $PROFILE_PATH $DATA_PATH/processed/run-environment/profile.env
     cp $CODE_PATH/settings.env $DATA_PATH/processed/run-environment/settings.env
 
     while getopts "sdbl" flag; do

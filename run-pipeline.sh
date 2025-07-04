@@ -14,7 +14,7 @@ usage()
 }
 
 for DIR in "${SUB_DIRS[@]}"; do
-    DATA_PATH=$DATA_ROOT/$DIR
+    export DATA_PATH=$DATA_ROOT/$DIR
     echo "Running pipeline for: $DATA_PATH"
     mkdir -p $DATA_PATH/processed/run-environment
     cp $PROFILE_PATH $DATA_PATH/processed/run-environment/profile.env

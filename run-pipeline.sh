@@ -13,7 +13,7 @@ usage()
     echo "       $0 -l # Run in local anaconda environment"
 }
 
-while getopts "sdblmp:" flag; do
+while getopts "sdbl" flag; do
     case ${flag} in
         s) DO_SINGULARITY=true
            ;;

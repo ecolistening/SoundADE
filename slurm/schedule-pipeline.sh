@@ -8,4 +8,4 @@
 #SBATCH -p short
 
 cd $HOME/SoundADE
-bash $HOME/SoundADE/run-pipeline.sh -s
+bash $HOME/SoundADE/run-pipeline.sh -s -p $DATA_PATH

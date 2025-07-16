@@ -55,7 +55,7 @@ for STEP in "${STEPS_ARRAY[@]}"; do
                                              "--local" \
                                              "--cores=$CORES" \
                                              "--memory=$MEM_PER_CPU" \
-                                             > $STEP_LOG 2>&1
+                                             2>&1 | tee $STEP_LOG
     fi
 
     if [[ $STEP -eq 1 ]] ; then
@@ -69,7 +69,7 @@ for STEP in "${STEPS_ARRAY[@]}"; do
                                             -F -C -T \
                                             "--cores=$CORES" \
                                             "--memory=$MEM_PER_CPU" \
-        > $STEP_LOG 2>&1
+                                            2>&1 | tee $STEP_LOG
     fi
 
     if [[ $STEP -eq 2 ]] ; then
@@ -81,7 +81,7 @@ for STEP in "${STEPS_ARRAY[@]}"; do
                                             "--local" \
                                             "--cores=$CORES" \
                                             "--memory=$MEM_PER_CPU" \
-        > $STEP_LOG 2>&1
+                                            2>&1 | tee $STEP_LOG
     fi
 
     if [[ $STEP -eq 3 ]] ; then
@@ -94,7 +94,7 @@ for STEP in "${STEPS_ARRAY[@]}"; do
                                             "--local" \
                                             "--cores=$CORES" \
                                             "--memory=$MEM_PER_CPU" \
-        > $STEP_LOG 2>&1
+                                            2>&1 | tee $STEP_LOG
     fi
 
     if [[ $STEP -eq 4 ]] ; then
@@ -107,7 +107,7 @@ for STEP in "${STEPS_ARRAY[@]}"; do
                                             "--local" \
                                             "--cores=$CORES" \
                                             "--memory=$MEM_PER_CPU" \
-        > $STEP_LOG 2>&1
+                                            2>&1 | tee $STEP_LOG
     fi
 
     if [[ $STEP -eq 5 ]] ; then
@@ -121,7 +121,7 @@ for STEP in "${STEPS_ARRAY[@]}"; do
                                             "--local" \
                                             "--cores=$CORES" \
                                             "--memory=$MEM_PER_CPU" \
-        > $STEP_LOG 2>&1
+                                            2>&1 | tee $STEP_LOG
     fi
 
     if [[ $STEP -eq 6 ]] ; then
@@ -135,7 +135,7 @@ for STEP in "${STEPS_ARRAY[@]}"; do
                                             "--local" \
                                             "--cores=$CORES" \
                                             "--memory=$MEM_PER_CPU" \
-        > $STEP_LOG 2>&1
+                                            2>&1 | tee $STEP_LOG
     fi
 
     if [[ $STEP -eq 7 ]] ; then
@@ -148,7 +148,7 @@ for STEP in "${STEPS_ARRAY[@]}"; do
                                             "--local" \
                                             "--cores=$CORES" \
                                             "--memory=$MEM_PER_CPU" \
-        > $STEP_LOG 2>&1
+                                            2>&1 | tee $STEP_LOG
     fi
 done
 

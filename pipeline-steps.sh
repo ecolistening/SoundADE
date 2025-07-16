@@ -36,7 +36,7 @@ set_run_environment () {
     else
         git rev-parse HEAD > $DATA_PATH/processed/run-environment/"$1"/commit.hash;
     fi
-    STEP_LOG=$DATA_PATH/processed/run-environment/"$1".log
+    STEP_LOG=$DATA_PATH/processed/run-environment/"$1"/"$1".log
     date > $DATA_PATH/processed/run-environment/"$1"/step-timestamp.txt
 }
 

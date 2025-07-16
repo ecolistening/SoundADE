@@ -36,7 +36,7 @@ for DIR in "${SUB_DIRS[@]}"; do
 
     if [[ $DO_SINGULARITY = true ]] ; then
         echo "Running using singularity"
-        singularity run --env "CORES=$CORES" --env "MEM_PER_CPU=$MEM_PER_CPU" --env "STEPS=$STEPS" -B $DATA_PATH:/data $CODE_PATH/pipeline.sif
+        singularity run --containall --no-home --env "CORES=$CORES" --env "MEM_PER_CPU=$MEM_PER_CPU" --env "STEPS=$STEPS" -B $DATA_PATH:/data $CODE_PATH/pipeline.sif
     fi
 
     if [[ $DO_DOCKER = true ]] ; then

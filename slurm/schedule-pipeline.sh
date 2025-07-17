@@ -5,7 +5,7 @@
 #Default in slurm
 #SBATCH --mail-user $USER@sussex.ac.uk
 #SBATCH --mail-type=ALL
-#SBATCH -p short
+#SBATCH -p general
 
 cd $HOME/SoundADE
 source ./settings.env

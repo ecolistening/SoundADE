@@ -296,7 +296,7 @@ class SoundingOutDiurnal(Dataset):
         if use_meta:
             kwargs['meta'] = (None, str)
 
-        df['country'] = df.apply(lambda r: 'uk' if 'UK' in r.path else 'ecuador', **kwargs)
+        df['country'] = df['location'].map(SoundingOutDiurnal.habitat_country)
         df['habitat code'] = df.apply(
             lambda r: f'{r.country.upper()[:2]}{SoundingOutDiurnal.habitat_number[r.location] + 1}',
             **kwargs)

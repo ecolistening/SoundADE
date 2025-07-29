@@ -1,12 +1,11 @@
 services:
-  pipeline:
+  app:
     container_name: soundade
     build:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - /media/data0/nature_sense_mini/Raw_Data:/data
-      - ./profiles/NatureSense:/data/run-environment/profile
+      - /mnt/echodata/nature_sense/Nature_Sense/Raw_Data:/data
     env_file:
       - .env
     tty: true

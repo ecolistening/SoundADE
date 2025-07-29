@@ -1,3 +1,4 @@
+import os
 import datetime as dt
 import logging
 import numpy as np
@@ -201,11 +202,11 @@ def get_base_parser():
         help="Threads per worker",
     )
     parser.set_defaults(func=main, **{
-        "infile": "/data/files_table.parquet",
-        "outfile": "/data/solar_table.parquet",
-        "sitesfile": "./data/locations.parquet",
-        "memory": 0,
-        "cores": 1,
+        "infile": "/".join([os.environ.get("DATA_PATH", "/data"), "files_table.parquet"]),
+        "outfile": "/".join([os.environ.get("DATA_PATH", "/data"), "solar_table.parquet"]),
+        "sitesfile": "/".join([os.environ.get("DATA_PATH", "/data"), "locations_table.parquet"]),
+        "memory": os.environ.get("MEM_PER_CPU", 0),
+        "cores": os.environ.get("CORES", 1),
         "local": True,
         "threads_per_worker": 1,
     })

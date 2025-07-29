@@ -1,3 +1,4 @@
+import os
 import argparse
 import time
 import logging
@@ -54,16 +55,13 @@ def index_audio(
     log.info("Recursively discovering audio files...")
     file_list = list(root_dir.rglob("*.[wW][aA][vV]"))
 
-    # TODO: move to file indexing stage
-    # log.info(f"Applying dataset specific filter...")
-    # b = b.filter(dataset.prefilter_file_dictionary)
-
     log.info(f"{len(file_list)} audio files found. Building file index...")
     ddf = (
         db.from_sequence(file_list, partition_size=partition_size, npartitions=npartitions)
         # extract audio metadata and attach 'valid' indicator of corrupt audio
         .map(file_path_to_audio_dict)
-        # attach site name from audio path, e.g. Knepp/S_SW1, Cairngorms/Wood, sounding_out/1/1/15
+        # attach site name from audio path
+        # e.g. Kilpisjarvi/K1, NatureSense/Knepp/S_SW1, Cairngorms/Wood, sounding_out/uk/1/15
         .map(dataset.extract_site_name)
         # attach timestamp from end of audio path
         .map(dataset.extract_timestamp)
@@ -153,44 +151,37 @@ def get_base_parser():
     parser.add_argument(
         "--root-dir",
         type=lambda p: Path(p),
-        required=True,
         help="Root directory containing (1) a locations.parquet file and (2) audio files (nested folder structure permitted)",
     )
     parser.add_argument(
         '--out-file',
         type=lambda p: Path(p),
-        required=True,
         help='Parquet file to save results.',
     )
     parser.add_argument(
         '--sitesfile',
         type=lambda p: Path(p),
-        required=False,
         help='Refencing a locations.parquet with site-level info (site_name/lat/lng/etc)',
     )
     parser.add_argument(
         '--dataset',
         type=str,
-        required=True,
         choices=datasets.keys(),
         help='Name of the dataset',
     )
     parser.add_argument(
         "--memory",
-        default=8,
         type=int,
         help="Amount of memory required in GB (total per node).",
     )
     parser.add_argument(
         "--cores",
         type=int,
-        default=1,
         help="Number of cores per node.",
     )
     parser.add_argument(
         "--threads-per-worker",
         type=int,
-        default=1,
         help="Threads per worker",
     )
     parser.add_argument(
@@ -206,11 +197,12 @@ def get_base_parser():
         help="Sets single-threaded for debugging.",
     )
     parser.set_defaults(func=main, **{
-        "root_dir": "/data",
-        "out_file": "/data/files_table.parquet",
-        "memory": 0,
-        "cores": 1,
-        "threads": 1,
+        "root_dir": os.environ.get("DATA_PATH", "/data"),
+        "out_file": "/".join([os.environ.get("DATA_PATH", "/data"), "files_table.parquet"]),
+        "dataset": os.environ.get("DATASET", None),
+        "memory": os.environ.get("MEM_PER_CPU", 0),
+        "cores": os.environ.get("CORES", 1),
+        "threads_per_worker": 1,
     })
     return parser
 

@@ -1,3 +1,4 @@
+import os
 import argparse
 import dask
 import logging
@@ -168,12 +169,14 @@ def get_base_parser():
     parser.add_argument(
         "--root-dir",
         type=lambda p: Path(p),
+        default=os.environ.get("DATA_PATH"),
         required=True,
         help="Root directory containing audio files",
     )
     parser.add_argument(
         '--save-dir',
         type=lambda p: Path(p),
+        default=os.environ.get("DATA_PATH"),
         required=True,
         help='Target directory for results',
     )
@@ -187,6 +190,7 @@ def get_base_parser():
     parser.add_argument(
         '--dataset',
         type=str,
+        default=os.environ.get("DATASET"),
         required=True,
         choices=datasets.keys(),
         help='Name of the dataset',
@@ -232,10 +236,9 @@ def get_base_parser():
         help="Sets single-threaded for debugging.",
     )
     parser.set_defaults(func=main, **{
-        "root_dir": "/data",
-        "out_file": "/data/files_table.parquet",
-        "memory": 0,
-        "cores": 1,
+        "root_dir": os.environ.get("DATA_PATH", "/data"),
+        "memory": os.environ.get("MEM_PER_CPU", 0),
+        "cores": os.environ.get("CORES", 1),
         "threads_per_worker": 1,
     })
     return parser

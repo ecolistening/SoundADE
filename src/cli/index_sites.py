@@ -1,3 +1,4 @@
+import os
 import argparse
 import time
 import logging
@@ -70,25 +71,23 @@ def get_base_parser():
     parser.add_argument(
         "--root-dir",
         type=lambda p: Path(p),
-        required=True,
         help="Root directory containing (1) a locations.parquet file and (2) audio files (nested folder structure permitted)",
     )
     parser.add_argument(
         '--out-file',
         type=lambda p: Path(p),
-        required=True,
         help='Parquet file to save results.',
     )
     parser.add_argument(
         '--dataset',
         type=str,
-        required=True,
         choices=datasets.keys(),
         help='Name of the dataset',
     )
     parser.set_defaults(func=main, **{
-        "root_dir": "/data",
-        "out_file": "/data/locations_table.parquet",
+        "root_dir": os.environ.get("DATA_PATH", "/data"),
+        "out_file": "/".join([os.environ.get("DATA_PATH", "/data"), "locations_table.parquet"]),
+        "dataset": os.environ.get("DATASET"),
     })
     return parser
 

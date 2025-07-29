@@ -1,0 +1,10 @@
+#!/bin/bash
+#SBATCH --job-name=soundade
+#SBATCH --output=soundade."%j".out
+#SBATCH --error=soundade."%j".err
+#SBATCH --mail-user $USER@sussex.ac.uk
+#SBATCH --mail-type=ALL
+#SBATCH --ntasks=1
+#SBATCH --partition=general
+
+singularity run --env-file .env -B $DATA_PATH:/data app.sif pipeline

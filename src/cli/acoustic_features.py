@@ -1,3 +1,4 @@
+import os
 import time
 import logging
 import numpy as np
@@ -256,12 +257,12 @@ def get_base_parser():
         help="Threads per worker",
     )
     parser.set_defaults(func=main, **{
-        'infile': "/data/files_table.parquet",
-        'outfile': "/data/recording_acoustic_features.parquet",
+        "infile": "/".join([os.environ.get("DATA_PATH", "/data"), "files_table.parquet"]),
+        "outfile": "/".join([os.environ.get("DATA_PATH", "/data"), "recording_acoustic_features_table.parquet"]),
+        "memory": os.environ.get("MEM_PER_CPU", 0),
+        "cores": os.environ.get("CORES", 0),
         'local': True,
         'threads_per_worker': 1,
-        'memory': 0,
-        'cores': 1,
         'frame': 2048,
         'hop': 512,
         'n_fft': 2048,

@@ -1,5 +1,5 @@
-import argparse
 import os
+import argparse
 import time
 import pathlib
 import logging
@@ -143,26 +143,26 @@ def get_base_parser():
     parser.add_argument(
         "--sitesfile",
         default=None,
-        help="Parquet file containing site information."
+        help="Parquet file containing site information.",
     )
     parser.add_argument(
         "--min-conf",
         required=False,
         type=float,
         default=0.5,
-        help="BirdNET confidence threshold"
+        help="BirdNET confidence threshold",
     )
     parser.add_argument(
         '--compute',
         default=False,
         action='store_true',
-        help='Aggregate the dataframe in memory before saving to parquet.'
+        help='Aggregate the dataframe in memory before saving to parquet.',
     )
     parser.add_argument(
         "--debug",
         default=False,
         action="store_true",
-        help="Sets single-threaded for debugging."
+        help="Sets single-threaded for debugging.",
     )
     parser.add_argument(
         "--threads-per-worker",
@@ -171,12 +171,12 @@ def get_base_parser():
         help="Threads per worker",
     )
     parser.set_defaults(func=main, **{
-        "infile": "/data/files_table.parquet",
-        "outfile": "/data/birdnet_species_probs.parquet",
-        "sitesfile": "./data/locations.parquet",
+        "infile": "/".join([os.environ.get("DATA_PATH", "/data"), "files_table.parquet"]),
+        "outfile": "/".join([os.environ.get("DATA_PATH", "/data"), "birdnet_species_probs_table.parquet"]),
+        "sitesfile": "/".join([os.environ.get("DATA_PATH", "/data"), "locations_table.parquet"]),
         "min_conf": 0.3,
-        "memory": 0,
-        "cores": 1,
+        "memory": os.environ.get("MEM_PER_CPU", 0),
+        "cores": os.environ.get("CORES", 1),
         "local": True,
         "threads_per_worker": 1,
     })

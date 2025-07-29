@@ -38,6 +38,11 @@ log = logging.getLogger(__name__)
 
 class NatureSense(Dataset):
     @staticmethod
+    def index_sites(root_dir: str | Path) -> pd.DataFrame:
+        assert (root_dir / "locations_table").exists(), "NatureSense locations is not extracted but provided as a separate file"
+        return pd.read_parquet(root_dir / "locations_table.parquet")
+
+    @staticmethod
     def preprocess(b: db.Bag, save=None) -> db.Bag:
         b = b.map(remove_dc_offset)
         b = b.map(high_pass_filter, fcut=300, forder=2, fname='butter', ftype='highpass')

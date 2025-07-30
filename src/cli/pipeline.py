@@ -182,7 +182,6 @@ def get_base_parser():
         '--sitesfile',
         type=lambda p: Path(p),
         default="/".join([os.environ.get("DATA_PATH", "/data"), "locations_table.parquet"]),
-        default=None,
         help='Refencing a locations.parquet with site-level info (site_name/lat/lng/etc)',
     )
     parser.add_argument(

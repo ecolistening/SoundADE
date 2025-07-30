@@ -103,20 +103,20 @@ class NatureSense(Dataset):
     @staticmethod
     def extract_site_name(audio_dict: Dict[str, Any]) -> Dict[str, Any]:
         file_path = audio_dict["local_file_path"]
-        audio_moth_match = re.search(r"Audiomoths/([^/]+)/(.+?)_\d{8}", file_path)
+        audio_moth_match = re.search(r"Audiomoths/Audiomoths/([^/]+)/(.+?)_\D{8}", file_path)
         song_meter_match = re.search(r"Song_Meter_Mini/([^/]+)/[^/]+_([^/_]+)", file_path)
         match = None
         if audio_moth_match:
+            recorder_model = "AudioMoth"
             match = audio_moth_match
         elif song_meter_match:
+            recorder_model = "SMM2"
             match = song_meter_match
         if match is None:
             log.warning(f"Failed to extract site name on {file_path}")
             return audio_dict
-        site_name = f"{match.group(1)}/{match.group(2)}".replace(" ", "_")
-        audio_dict.update({
-            "site_name": site_name,
-        })
+        site_name = "/".join([match.group(1), match.group(2)])
+        audio_dict.update({"site_name": site_name, "recorder_model": recorder_model })
         return audio_dict
 
     def extract_timestamp(audio_dict: Dict[str, Any]) -> Dict[str, Any]:

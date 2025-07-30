@@ -169,21 +169,19 @@ def get_base_parser():
     parser.add_argument(
         "--root-dir",
         type=lambda p: Path(p),
-        default=os.environ.get("DATA_PATH"),
-        required=True,
+        default=os.environ.get("DATA_PATH", "/data"),
         help="Root directory containing audio files",
     )
     parser.add_argument(
         '--save-dir',
         type=lambda p: Path(p),
-        default=os.environ.get("DATA_PATH"),
-        required=True,
+        default=os.environ.get("DATA_PATH", "/data"),
         help='Target directory for results',
     )
     parser.add_argument(
         '--sitesfile',
         type=lambda p: Path(p),
-        required=False,
+        default="/".join([os.environ.get("DATA_PATH", "/data"), "locations_table.parquet"]),
         default=None,
         help='Refencing a locations.parquet with site-level info (site_name/lat/lng/etc)',
     )
@@ -191,7 +189,6 @@ def get_base_parser():
         '--dataset',
         type=str,
         default=os.environ.get("DATASET"),
-        required=True,
         choices=datasets.keys(),
         help='Name of the dataset',
     )
@@ -218,7 +215,6 @@ def get_base_parser():
     )
     parser.add_argument(
         "--min-conf",
-        required=False,
         type=float,
         default=0.5,
         help="BirdNET confidence threshold"

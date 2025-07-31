@@ -1,41 +1,44 @@
-import dask.bag as db
+import abc
+import datetime as dt
 import logging
-import numpy as np
 import pandas as pd
-import pyarrow as pa
 import re
-import soundfile as sf
 
-from dask import dataframe as dd
-from datetime import datetime
-from importlib.resources import files
 from pathlib import Path
-from typing import Any, List, Iterable, Tuple, Dict
-
-from soundade.audio.feature.vector import Features
-from soundade.data.bag import (
-    file_path_to_audio_dict,
-    valid_audio_file,
-    create_file_load_dictionary,
-    load_audio_from_path,
-    extract_features_from_audio,
-    reformat_for_dataframe,
-    power_spectra_from_audio,
-    log_features,
-    transform_features,
-    extract_banded_audio,
-    remove_dc_offset,
-    high_pass_filter,
-    extract_scalar_features_from_audio,
-)
-
-from soundade.data.metadata import timeparts
-from soundade.data.solar import solartimes
+from typing import Any, List, Dict
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
-class Dataset:
-    @staticmethod
-    def prefilter_file_dictionary(d: Dict) -> bool:
-        return True
+class Dataset(abc.ABC):
+    def index_sites(self, root_dir: str | Path) -> pd.DataFrame:
+        assert (root_dir / "locations_table").exists(), \
+            f"{self.__class__.__name__} locations is not extracted but provided as a separate file"
+        return pd.read_parquet(root_dir / "locations_table.parquet")
+
+    def extract_site_name(self, audio_dict: Dict[str, Any]) -> Dict[str, Any]:
+        file_path = audio_dict["local_file_path"]
+        match = re.search(self.PATTERN, s, flags=re.IGNORECASE)
+        if match is None:
+            log.warning(f"Failed to extract site name on {file_path}")
+            return audio_dict
+        audio_dict.update({"site_name": self._extract_site_hierarchy(match)})
+        return audio_dict
+
+    def extract_timestamp(self, audio_dict: Dict[str, Any]) -> Dict[str, Any]:
+        file_path = audio_dict["local_file_path"]
+        match = re.search(self.PATTERN, s, flags=re.IGNORECASE)
+        if match is None:
+            log.warning(f"Failed to extract timestamp from {file_path}")
+            return audio_dict
+        audio_dict.update({"timestamp": dt.datetime.strptime(match.group("timestamp"), self.TIMESTAMP_FORMAT)})
+        return audio_dict
+
+    def _extract_site_hierarchy(self, match):
+        site_levels = [self.SITE_LEVEL_0]
+        level = 1
+        while True:
+            try: site_levels.append(match.group(f"site_level_{level}"))
+            except: break
+            level += 1
+        return "/".join(levels)

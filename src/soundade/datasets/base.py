@@ -4,12 +4,14 @@ import logging
 import pandas as pd
 import re
 
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, List, Dict
+from typing import Any, Dict
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
+@dataclass
 class Dataset(abc.ABC):
     def index_sites(self, root_dir: str | Path) -> pd.DataFrame:
         assert (root_dir / "locations_table").exists(), \

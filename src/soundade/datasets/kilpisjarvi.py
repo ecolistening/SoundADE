@@ -1,16 +1,16 @@
-import datetime as dt
 import logging
 import pandas as pd
 import re
 
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, List, Dict
 
 from soundade.datasets.base import Dataset
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
+@dataclass
 class Kilpisjarvi(Dataset):
     SITE_LEVEL_0: str = "kilpisjarvi"
     PATTERN = (

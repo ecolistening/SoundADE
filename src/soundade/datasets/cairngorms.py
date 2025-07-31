@@ -1,16 +1,7 @@
-import datetime as dt
-import logging
-import pandas as pd
-import re
-
-from pathlib import Path
-from typing import Any, List, Dict
-
+from dataclasses import dataclass
 from soundade.datasets.base import Dataset
 
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger(__name__)
-
+@dataclass
 class Cairngorms(Dataset):
     SITE_LEVEL_0: str = "cairngorms"
     PATTERN: str = (

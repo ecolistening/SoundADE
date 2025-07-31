@@ -12,7 +12,6 @@ from dask.distributed import Client
 from pathlib import Path
 from typing import Any, Tuple
 
-from soundade.hpc.arguments import DaskArgumentParser
 from soundade.data.bag import file_path_to_audio_dict
 from soundade.datasets import datasets
 
@@ -55,11 +54,10 @@ def index_audio(
 
     log.info("Recursively discovering audio files...")
 
-    file_list = list(itertools.chain(
-        root_dir.rglob("*.[wW][aA][vV]"),
-        root_dir.rglob("*.[mM][pP]3"),
-        root_dir.rglob("*.[fF][lL][aA][cC]"),
-    ))
+    wavs = root_dir.rglob("*.[wW][aA][vV]")
+    mp3s = root_dir.rglob("*.[mM][pP]3")
+    flacs = root_dir.rglob("*.[fF][lL][aA][cC]")
+    file_list = list(itertools.chain(wavs, mp3s, flacs))
 
     log.info(f"{len(file_list)} audio files found. Building file index...")
     ddf = (
@@ -77,9 +75,14 @@ def index_audio(
 
     # attach site_id as key reference and drop site name
     if sites is not None:
+        sites = sites.reset_index()
         ddf = (
             ddf
-            .merge(sites.reset_index()[["site_name", "site_id"]], on="site_name", how="left")
+            .merge(
+                sites[["site_name", "site_id"]],
+                on="site_name",
+                how="left"
+            )
             .drop("site_name", axis=1)
         )
 
@@ -111,7 +114,7 @@ def main(
     memory: int = 4,
     cores: int = 1,
     threads_per_worker: int = 1,
-    compute: bool = False,
+    compute: bool = True,
     debug: bool = False,
     **kwargs: Any,
 ) -> None:
@@ -130,7 +133,7 @@ def main(
         debug (bool, optional): Flag to set processing to synchronous for debugging. Defaults to False.
 
     Returns:
-        dd.DataFrame
+        None
     """
     if debug:
         cfg.set(scheduler='synchronous')

@@ -3,10 +3,10 @@ from soundade.datasets.base import Dataset
 
 @dataclass
 class Cairngorms(Dataset):
-    SITE_LEVEL_0: str = "cairngorms"
     PATTERN: str = (
         "(?<recorder_model>[^/]+)_(?P<site_level_1>[^/]+)/"
         "(?P<date>\d{8})/"
-        "(?P<timestamp>\d{8}_\d{6})\.[wav|flac|mp3]"
+        "(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})_"
+        "(?P<hour>\d{2})(?P<minute>\d{2})(?P<second>\d{2})"
+        "\.[wav|flac|mp3]"
     )
-    TIMESTAMP_FORMAT: str = "%Y%m%d_%H%M%S"

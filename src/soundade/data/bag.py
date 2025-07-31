@@ -7,7 +7,7 @@ import maad.sound
 import numpy as np
 import scipy
 import soundfile
-import multiformats
+import uuid
 import os
 
 from datetime import timedelta
@@ -23,12 +23,14 @@ FRAME_LENGTH, HOP_LENGTH = 16000, 4000
 logging.basicConfig(level=logging.INFO)
 
 def file_to_cid(file_path):
+    import multiformats
     with open(file_path, 'rb') as f:
         data = f.read()
     digest = multiformats.multihash.digest(data, "sha2-256")
     return multiformats.CID("base32", 1, "raw", digest)
 
 def file_segment_to_cid(file_path, seconds=60):
+    import multiformats
     with soundfile.SoundFile(file_path) as f:
         sample_rate = f.samplerate
         channels = f.channels
@@ -66,7 +68,7 @@ def file_path_to_audio_dict(file_path: str | Path) -> Dict[str, Any]:
     """
     audio_metadata = valid_audio_file(file_path)
     audio_dict = {
-        "file_cid": str(file_to_cid(file_path)),
+        "file_id": str(uuid.uuid4()), # str(file_to_cid(file_path)),
         "file_name": Path(file_path).name,
         "local_file_path": str(file_path),
         "size": os.path.getsize(file_path),
@@ -98,6 +100,7 @@ def create_file_load_dictionary(
     for i in range(segments):
         segment_dict = audio_dict.copy()
         segment_dict.update({
+            "segment_id": str(uuid.uuid4()),
             "offset": i * seconds,
             "duration": seconds,
         })
@@ -163,7 +166,8 @@ def load_audio_from_path(audio_dict: Dict) -> Dict:
             "duration": audio_dict.get("duration"),
         })
         return {
-            "file_cid": audio_dict.get("file_cid"),
+            "file_id": audio_dict.get("file_id"),
+            "segment_id": audio_dict.get("segment_id"),
             "sr": audio_dict.get("sr"),
             "audio": audio,
         }

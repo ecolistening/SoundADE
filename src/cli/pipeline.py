@@ -55,11 +55,14 @@ def pipeline(
     start_time = time.time()
     # index sites if not already available
     log.info(f"Processing site information")
-    sites_df = index_sites(
-        root_dir=root_dir,
-        out_file=sites_path,
-        dataset=dataset,
-    ) if not sitesfile else pd.read_parquet(sitesfile)
+    if not sitesfile:
+        sites_df = index_sites(
+            root_dir=root_dir,
+            out_file=sites_path,
+            dataset=dataset,
+        )
+    else:
+        sites_df = pd.read_parquet(sitesfile)
     # index files
     log.info(f"Indexing audio files")
     files_df = index_audio(

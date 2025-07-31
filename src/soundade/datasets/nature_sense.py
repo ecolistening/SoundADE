@@ -1,28 +1,14 @@
-import re
-
 from dataclasses import dataclass
 from soundade.datasets.base import Dataset
 
 @dataclass
 class NatureSense(Dataset):
-    SITE_LEVEL_0: str = "nature_sense"
-    SMM2_PATTERN = (
-        "(?P<recorder_model>Song_Meter_Mini_2)/"
+    PATTERN = (
+        "(?P<recorder_model>Audiomoths|Song_Meter_Mini_2|SM4_Bat)/"
         "(?P<site_level_1>[^/]+)/"
-        "[^/]+_(?P<site_level_2>[^/]+)/"
-        ".*?/"
-        "[^_]+_(?P<timestamp>\d{8}_\d{6})\.[wav|mp3|flac]"
+        "[^/_]+_(?P<site_level_2>[^/_]+(?:[ _ ][^/_]+)*?)(?:_\d{8})?/"
+        "(?:[^_/]+_)?"
+        "(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})_"
+        "(?P<hour>\d{2})(?P<minute>\d{2})(?P<second>\d{2})"
+        "\.(?:wav|WAV|flac|FLAC|mp3|MP3)"
     )
-    AUDIO_MOTH_PATTERN = (
-        "(?P<recorder_model>Audiomoth)s/"
-        "(?P<site_level_1>[^/]+)/"
-        "(?P<site_level_2>[^/]+_[^/]+)_\d+/"
-        "(?P<timestamp>\d{8}_\d{6})\.[wav|mp4|flac]"
-    )
-    TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S"
-
-    def _get_match(self, file_path):
-        file_path = audio_dict["local_file_path"]
-        audio_moth_match = re.search(self.AUDIO_MOTH_PATTERN, file_path, flags=re.IGNORECASE)
-        song_meter_match = re.search(self.SMM2_PATTERN, file_path, flags=re.IGNORECASE)
-        return audio_moth_match if audio_moth_match else (song_meter_match if song_meter_match else None)

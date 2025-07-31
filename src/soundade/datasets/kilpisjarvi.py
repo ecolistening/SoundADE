@@ -16,10 +16,12 @@ class Kilpisjarvi(Dataset):
     PATTERN = (
         "(?P<site_level_1>[^/]+)/"
         "Data/"
-        "(?P<site_level_2>SMA\d{5})_(?P<timestamp>\d{8}_\d{6})\.[wav|flac|mp3]"
+        "(?P<site_level_2>SMA\d{5})_"
+        "(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})_"
+        "(?P<hour>\d{2})(?P<minute>\d{2})(?P<second>\d{2})"
+        "\.[wav|flac|mp3]"
     )
     SMM_SUMMARY = "(?P<recorder>SMA\d{5})_Summary.txt"
-    TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S"
 
     def index_sites(self, root_dir: str | Path) -> pd.DataFrame:
         site_data = []

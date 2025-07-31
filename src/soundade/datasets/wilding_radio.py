@@ -3,6 +3,7 @@ from soundade.datasets.base import Dataset
 
 @dataclass
 class WildingRadio(Dataset):
+    SITE_LEVEL_0: str = "wilding_radio"
     PATTERN: str = (
         "recordings/"
         "(?P<site_level_2>[^/]+)/"

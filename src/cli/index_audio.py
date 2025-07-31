@@ -1,5 +1,6 @@
 import os
 import argparse
+import itertools
 import time
 import logging
 import pandas as pd
@@ -46,22 +47,27 @@ def index_audio(
     compute: bool = True,
 ) -> Tuple[dd.DataFrame, dd.Scalar] | pd.DataFrame:
     assert dataset in datasets, f"Unsupported dataset '{dataset}'"
-    dataset: Dataset = datasets[dataset]
+    dataset: Dataset = datasets[dataset]()
 
     start_time = time.time()
 
     root_dir = Path(root_dir)
 
     log.info("Recursively discovering audio files...")
-    file_list = list(root_dir.rglob("*.[wW][aA][vV]"))
+
+    file_list = list(itertools.chain(
+        root_dir.rglob("*.[wW][aA][vV]"),
+        root_dir.rglob("*.[mM][pP]3"),
+        root_dir.rglob("*.[fF][lL][aA][cC]"),
+    ))
 
     log.info(f"{len(file_list)} audio files found. Building file index...")
     ddf = (
         db.from_sequence(file_list, partition_size=partition_size, npartitions=npartitions)
         # extract audio metadata and attach 'valid' indicator of corrupt audio
         .map(file_path_to_audio_dict)
-        # attach site name from audio path
-        # e.g. Kilpisjarvi/K1, NatureSense/Knepp/S_SW1, Cairngorms/Wood, sounding_out/uk/1/15
+        # attach site hierarchy from audio path
+        # e.g. kilpisjarvi/K1, nature_sense/Knepp/S_SW1, cairngorms/Wood, sounding_out/uk/1/15
         .map(dataset.extract_site_name)
         # attach timestamp from end of audio path
         .map(dataset.extract_timestamp)
@@ -73,7 +79,7 @@ def index_audio(
     if sites is not None:
         ddf = (
             ddf
-            .merge(sites[["site_name", "site_id"]], on="site_name", how="left")
+            .merge(sites.reset_index()[["site_name", "site_id"]], on="site_name", how="left")
             .drop("site_name", axis=1)
         )
 

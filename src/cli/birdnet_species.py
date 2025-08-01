@@ -33,7 +33,7 @@ def birdnet_species(
 
     log.info(f"Extracting BirdNET species probabilities...")
     ddf = (
-        files[["file_cid", "local_file_path", "timestamp", "site_id", "valid"]]
+        files[["file_id", "local_file_path", "timestamp", "site_id", "valid"]]
         .merge(sites[["site_id", "latitude", "longitude"]], on="site_id", how="left")
         # .map_partitions(species_probs_as_df, min_conf=min_conf, meta=species_probs_meta())
         .to_bag(format="dict")

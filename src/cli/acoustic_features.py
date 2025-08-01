@@ -71,7 +71,7 @@ def acoustic_features(
 
     """
     {
-        "file_cid": file cid [string],
+        "file_id": file cid [string],
         "FEATURE_NAME": 'FEATURE_ARRAY' [for each feature computed]
         "start_time": start time relative to timestamp (seconds) [float]
         "end_time": end time relative to timestamp (seconds) [float]

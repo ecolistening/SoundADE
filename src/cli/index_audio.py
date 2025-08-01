@@ -24,7 +24,7 @@ cfg.set({
 
 def file_meta():
     return pd.DataFrame({
-        "file_cid": pd.Series(dtype="string[pyarrow]"),
+        "file_id": pd.Series(dtype="string[pyarrow]"),
         "file_name": pd.Series(dtype="string[pyarrow]"),
         "local_file_path": pd.Series(dtype="string[pyarrow]"),
         "size": pd.Series(dtype="int64[pyarrow]"),

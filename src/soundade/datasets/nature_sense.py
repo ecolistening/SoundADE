@@ -8,7 +8,7 @@ class NatureSense(Dataset):
         r"(?P<site_level_1>[^/]+)/"
         r"(?P<site_level_2>[^/]+)/"
         r"(?:\d{8}/)?"
-        r"(?P<device_id>[^/_]+)_"
+        r"(?:(?P<device_id>[^/_]+)_)?"
         r"(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})_"
         r"(?P<hour>\d{2})(?P<minute>\d{2})(?P<second>\d{2})"
         r"\.(?i:wav|flac|mp3)"

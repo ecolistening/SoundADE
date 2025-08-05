@@ -53,6 +53,9 @@ def acoustic_features_meta():
             f"{feature.name}": pd.Series(dtype="float64[pyarrow]")
             for feature in Features
         },
+        "log acoustic evenness index": pd.Series(dtype="float64[pyarrow]"),
+        "log root mean square": pd.Series(dtype="float64[pyarrow]"),
+        "log(1-temporal entropy)": pd.Series(dtype="float64[pyarrow]"),
     })
 
 def acoustic_features(
@@ -70,26 +73,25 @@ def acoustic_features(
 
     log.info("Loading and filtering corrupt audio...")
     log.info(f"Chunking into segments of duration {segment_duration}...")
-    # synchronous so dask can determine how to partition the data for concurrency
     files = itertools.chain.from_iterable((
         create_file_load_dictionary(audio_dict, seconds=segment_duration)
         for audio_dict in files[files["valid"]].to_dict(orient="records")
     ))
     b = db.from_sequence(files, npartitions=npartitions)
-    log.info(f'Partitions after load: {b.npartitions}')
-    log.info('Extracting acoustic features')
+
+    log.info(f"Partitions after load: {b.npartitions}")
+    log.info("Extracting acoustic features")
     ddf = (
         b.map(load_audio_from_path)
         .map(remove_dc_offset)
-        .map(high_pass_filter, fcut=300, forder=2, fname='butter', ftype='highpass')
+        .map(high_pass_filter, fcut=300, forder=2, fname="butter", ftype="highpass")
         .map(extract_scalar_features_from_audio, frame_length=frame, hop_length=hop, n_fft=n_fft)
-        .map(log_features, features=['acoustic evenness index', 'root mean square'])
-        .map(transform_features, lambda f: np.log(1.0 - np.array(f)), name='log(1-{f})', features=['temporal entropy'])
+        .map(log_features, features=["acoustic evenness index", "root mean square"])
+        .map(transform_features, lambda f: np.log(1.0 - np.array(f)), name="log(1-{f})", features=["temporal entropy"])
         .to_dataframe(meta=acoustic_features_meta())
     )
-    # reformat the dataframe
-    # melt scalar features into feature/value columns
-    # drop any rows where the feature value is null
+
+    log.info("Melting dataframe to long form")
     ddf = (
         ddf.melt(
             id_vars=ddf.columns[:ddf.columns.get_loc(Features[0].name)],
@@ -97,7 +99,7 @@ def acoustic_features(
             var_name="feature",
             value_name="value",
         )
-        .dropna(subset='value')
+        .dropna(subset="value")
     )
 
     if compute:

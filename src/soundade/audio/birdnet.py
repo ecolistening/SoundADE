@@ -155,7 +155,7 @@ def _species_probs_as_df(
     # }
     df = pd.DataFrame(recording.detections)
     # stack with important metadata
-    df["file_cid"] = audio_dict["file_cid"]
+    df["file_id"] = audio_dict["file_id"]
     df["min_conf"] = min_conf
     df["model"] = f"BirdNET_GLOBAL_6K_V{analyzer.version}"
     # reorder columns to match expected output schema

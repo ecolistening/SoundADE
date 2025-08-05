@@ -171,6 +171,7 @@ def load_audio_from_path(audio_dict: Dict) -> Dict:
             "segment_id": audio_dict.get("segment_id"),
             "segment_idx": audio_dict.get("segment_idx"),
             "offset": audio_dict.get("offset"),
+            "duration": audio_dict.get("duration"),
             "sr": audio_dict.get("sr"),
             "audio": audio,
         }

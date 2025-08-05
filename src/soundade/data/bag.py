@@ -101,6 +101,7 @@ def create_file_load_dictionary(
         segment_dict = audio_dict.copy()
         segment_dict.update({
             "segment_id": str(uuid.uuid4()),
+            "segment_idx": i,
             "offset": i * seconds,
             "duration": seconds,
         })
@@ -168,6 +169,8 @@ def load_audio_from_path(audio_dict: Dict) -> Dict:
         return {
             "file_id": audio_dict.get("file_id"),
             "segment_id": audio_dict.get("segment_id"),
+            "segment_idx": audio_dict.get("segment_idx"),
+            "offset": audio_dict.get("offset"),
             "sr": audio_dict.get("sr"),
             "audio": audio,
         }
@@ -305,7 +308,6 @@ def extract_scalar_features_from_audio(audio_dict: Dict, frame_length: int = FRA
 
 def log_features(features_dict: Dict, features: Iterable = [], epsilon: float = 1e-8):
     for f in features:
-        log.info(features_dict[f])
         features_dict.update({f'log {f}': np.log(np.array(features_dict[f]) + epsilon).tolist()})
     return features_dict
 

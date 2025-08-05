@@ -3,6 +3,7 @@ import time
 import logging
 import numpy as np
 import pandas as pd
+import itertools
 
 from dask import config as cfg
 from dask import bag as db
@@ -13,12 +14,12 @@ from typing import Any, Tuple
 
 from soundade.hpc.arguments import DaskArgumentParser
 from soundade.hpc.cluster import clusters
+from soundade.audio.feature.scalar import Features
 from soundade.data.bag import (
     file_path_to_audio_dict,
     valid_audio_file,
     create_file_load_dictionary,
     load_audio_from_path,
-    extract_features_from_audio,
     write_wav,
     reformat_for_dataframe,
     power_spectra_from_audio,
@@ -37,8 +38,25 @@ cfg.set({
     "distributed.scheduler.worker-ttl": None
 })
 
+def acoustic_features_meta():
+    return pd.DataFrame({
+        "sr": pd.Series(dtype="int32[pyarrow]"),
+        "segment_id": pd.Series(dtype="string[pyarrow]"),
+        "segment_idx": pd.Series(dtype="string[pyarrow]"),
+        "file_id": pd.Series(dtype="string[pyarrow]"),
+        "offset": pd.Series(dtype="float64[pyarrow]"),
+        "frame_length": pd.Series(dtype="int32[pyarrow]"),
+        "hop_length": pd.Series(dtype="int32[pyarrow]"),
+        "n_fft": pd.Series(dtype="int32[pyarrow]"),
+        "feature_length": pd.Series(dtype="int32[pyarrow]"),
+        **{
+            f"{feature.name}": pd.Series(dtype="float64[pyarrow]")
+            for feature in Features
+        },
+    })
+
 def acoustic_features(
-    files: dd.DataFrame,
+    files: pd.DataFrame,
     outfile: str | Path,
     segment_duration: float = 60.0,
     frame: int = 0,
@@ -52,54 +70,35 @@ def acoustic_features(
 
     log.info("Loading and filtering corrupt audio...")
     log.info(f"Chunking into segments of duration {segment_duration}...")
-    b = (
-        files.to_bag(format="dict")
-        .filter(lambda audio_dict: audio_dict["valid"])
-        .map(create_file_load_dictionary, seconds=segment_duration)
-        .flatten()
-        .map(load_audio_from_path)
+    # synchronous so dask can determine how to partition the data for concurrency
+    files = itertools.chain.from_iterable((
+        create_file_load_dictionary(audio_dict, seconds=segment_duration)
+        for audio_dict in files[files["valid"]].to_dict(orient="records")
+    ))
+    b = db.from_sequence(files, npartitions=npartitions)
+    log.info(f'Partitions after load: {b.npartitions}')
+    log.info('Extracting acoustic features')
+    ddf = (
+        b.map(load_audio_from_path)
         .map(remove_dc_offset)
         .map(high_pass_filter, fcut=300, forder=2, fname='butter', ftype='highpass')
+        .map(extract_scalar_features_from_audio, frame_length=frame, hop_length=hop, n_fft=n_fft)
+        .map(log_features, features=['acoustic evenness index', 'root mean square'])
+        .map(transform_features, lambda f: np.log(1.0 - np.array(f)), name='log(1-{f})', features=['temporal entropy'])
+        .to_dataframe(meta=acoustic_features_meta())
     )
-
-    # if save_preprocessed is not None:
-    #     Path(save_preprocessed).mkdir(parents=True, exist_ok=True)
-    #     log.info(f'Saving wav files to {save_preprocessed}.')
-    #     b.map(write_wav, outpath=save_preprocessed) # .compute()
-
-    log.debug('Extracting acoustic features')
-
-    """
-    {
-        "file_id": file cid [string],
-        "FEATURE_NAME": 'FEATURE_ARRAY' [for each feature computed]
-        "start_time": start time relative to timestamp (seconds) [float]
-        "end_time": end time relative to timestamp (seconds) [float]
-        "frame_length": frame length in samples [int],
-        "hop_length": hop length in samples [int],
-        "n_fft": number of samples per fft [int],
-    }
-    """
+    # reformat the dataframe
+    # melt scalar features into feature/value columns
+    # drop any rows where the feature value is null
     ddf = (
-        b.map(extract_features_from_audio, frame_length=frame, hop_length=hop, n_fft=n_fft)
-        # # TODO: returned types need formatting
-        # .map(log_features, features=['acoustic evenness index', 'root mean square'])
-        # .map(transform_features, lambda f: np.log(1.0 - np.array(f)), name='log(1-{f})', features=['temporal entropy'])
-        .map(reformat_for_dataframe)
-        .flatten()
-        .to_dataframe()
+        ddf.melt(
+            id_vars=ddf.columns[:ddf.columns.get_loc(Features[0].name)],
+            value_vars=ddf.columns[ddf.columns.get_loc(Features[0].name):],
+            var_name="feature",
+            value_name="value",
+        )
+        .dropna(subset='value')
     )
-
-    # frames are indexed by string integer on the columns
-    # melt frames into rows
-    ddf = ddf.melt(
-        id_vars=ddf.columns[:ddf.columns.get_loc("0")],
-        value_vars=ddf.columns[ddf.columns.get_loc("0"):],
-        var_name="frame",
-        value_name="value",
-    )
-    # drop any nulls
-    ddf = ddf.dropna(subset='value')
 
     if compute:
         df = ddf.compute()
@@ -196,7 +195,7 @@ def main(
         log.info(client)
 
     acoustic_features(
-        dd.read_parquet(infile),
+        pd.read_parquet(infile),
         outfile=outfile,
         segment_duration=segment_duration,
         frame=frame,

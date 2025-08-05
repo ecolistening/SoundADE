@@ -22,8 +22,8 @@ cfg.set({
 })
 
 def birdnet_species(
-    files: dd.DataFrame,
-    sites: pd.DataFrame | dd.DataFrame,
+    files: pd.DataFrame,
+    sites: pd.DataFrame | pd.DataFrame,
     outfile: str | Path,
     min_conf: float,
     npartitions: int = None,
@@ -31,13 +31,16 @@ def birdnet_species(
 ) -> Tuple[dd.DataFrame, dd.Scalar] | pd.DataFrame:
     start_time = time.time()
 
+    columns = ["file_id", "local_file_path", "timestamp", "site_id", "valid"]
+    df = files.loc[files["valid"], columns].merge(
+        sites[["site_id", "latitude", "longitude"]],
+        on="site_id",
+        how="left"
+    )
+
     log.info(f"Extracting BirdNET species probabilities...")
     ddf = (
-        files[["file_id", "local_file_path", "timestamp", "site_id", "valid"]]
-        .merge(sites[["site_id", "latitude", "longitude"]], on="site_id", how="left")
-        # .map_partitions(species_probs_as_df, min_conf=min_conf, meta=species_probs_meta())
-        .to_bag(format="dict")
-        .filter(lambda file_dict: file_dict["valid"])
+        db.from_sequence(df.to_dict(orient="records"), npartitions=npartitions)
         .map(species_probs, min_conf=min_conf)
         .filter(len)
         .flatten()
@@ -127,8 +130,8 @@ def main(
         log.info(client)
 
     birdnet_species(
-        files=dd.read_parquet(infile),
-        sites=dd.read_parquet(sitesfile),
+        files=pd.read_parquet(infile),
+        sites=pd.read_parquet(sitesfile),
         outfile=outfile,
         min_conf=min_conf,
         npartitions=npartitions,

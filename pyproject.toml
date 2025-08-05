@@ -13,6 +13,7 @@ dependencies = [
     "astral==3.2",
     "audioread==3.0.1",
     "birdnetlib>=0.18.0",
+    "bokeh>=3.7.3",
     "certifi==2025.4.26",
     "cffi==1.17.1",
     "charset-normalizer==3.4.2",

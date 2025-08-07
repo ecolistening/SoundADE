@@ -152,16 +152,17 @@ def extract_banded_audio(audio_dict: Dict, bands: Iterable[Tuple[int, int]]):
 
     return audio_dicts
 
-def load_audio_from_path(audio_dict: Dict) -> Dict:
+def load_audio_from_path(audio_dict: Dict, sr: int | None = None) -> Dict:
     '''Load audio from a path and place into a dictionary for Bag storage
 
     :param p: Path of file to load
     :return: Dict representation of audio file.
     '''
+    sr = sr or audio_dict.get("sr")
     try:
-        audio, sr = librosa.load(**{
+        audio, _ = librosa.load(**{
             "path": audio_dict.get("local_file_path"),
-            "sr": audio_dict.get("sr"),
+            "sr": sr,
             "mono": True,
             "offset": audio_dict.get("offset"),
             "duration": audio_dict.get("duration"),
@@ -172,7 +173,7 @@ def load_audio_from_path(audio_dict: Dict) -> Dict:
             "segment_idx": audio_dict.get("segment_idx"),
             "offset": audio_dict.get("offset"),
             "duration": audio_dict.get("duration"),
-            "sr": audio_dict.get("sr"),
+            "sr": sr,
             "audio": audio,
         }
         return audio_dict

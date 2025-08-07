@@ -38,7 +38,7 @@ def pipeline(
     frame: int = 0,
     hop: int = 0,
     n_fft: int = 0,
-    min_conf: float = 0.3,
+    min_conf: float = 0.0,
     partition_size: int = None,
     npartitions: int = None,
 ) -> Tuple[dd.DataFrame, dd.Scalar] | pd.DataFrame:
@@ -46,11 +46,11 @@ def pipeline(
     assert dataset in datasets, f"Unsupported dataset '{dataset}'"
     # setup data sinks
     save_dir.mkdir(exist_ok=True, parents=True)
-    sites_path = sitesfile or save_dir / "locations.parquet"
-    files_path = save_dir / "files.parquet"
-    solar_parth = save_dir / "solar.parquet"
-    recording_acoustic_features_path = save_dir / "recording_acoustic_features.parquet"
-    birdnet_species_probs_path = save_dir / "birdnet_species_probs.parquet"
+    sites_path = sitesfile or save_dir / "locations_table.parquet"
+    files_path = save_dir / "files_table.parquet"
+    solar_path = save_dir / "solar_table.parquet"
+    recording_acoustic_features_path = save_dir / "recording_acoustic_features_table.parquet"
+    birdnet_species_probs_path = save_dir / "birdnet_species_probs_table.parquet"
     # begin timing
     start_time = time.time()
     # index sites if not already available
@@ -75,16 +75,16 @@ def pipeline(
     # index solar times
     log.info(f"Indexing solar times")
     files_df, solar_df = index_solar(
-        files=dask.dataframe.from_pandas(files_df),
+        files=files_df,
         sites=sites_df,
-        infile=save_dir / "files.parquet",
-        outfile=save_dir / "solar.parquet",
+        infile=files_path,
+        outfile=solar_path,
         compute=True,
     )
     # extract acoustic featres
     log.info(f"Extracting acoustic features")
     acoustic_features_ddf, acoustic_features_future = acoustic_features(
-        files=dask.dataframe.from_pandas(files_df),
+        files=files_df,
         outfile=recording_acoustic_features_path,
         segment_duration=segment_duration,
         frame=frame,
@@ -95,7 +95,7 @@ def pipeline(
     # extract birdnet species scores
     log.info(f"Extracting BirdNET species probabilities")
     birdnet_species_ddf, birdnet_species_future = birdnet_species(
-        files=dask.dataframe.from_pandas(files_df),
+        files=files_df,
         sites=sites_df,
         outfile=birdnet_species_probs_path,
         min_conf=min_conf,
@@ -108,7 +108,8 @@ def pipeline(
         birdnet_species_future,
     )
     # and we're done!
-    log.info(f"Pipeline complete, time taken: {time.time() - start_time}")
+    log.info("Pipeline complete")
+    log.info(f"Time taken: {time.time() - start_time}")
 
 def main(
     root_dir: str | Path,
@@ -196,7 +197,6 @@ def get_base_parser():
     )
     parser.add_argument(
         '--segment-duration',
-        default=60.0,
         type=float,
         help='Duration for chunking audio segments (defaults to 60s). Specify -1 to use full clip.'
     )
@@ -218,13 +218,11 @@ def get_base_parser():
     parser.add_argument(
         "--min-conf",
         type=float,
-        default=0.5,
         help="BirdNET confidence threshold"
     )
     parser.add_argument(
         "--threads-per-worker",
         type=int,
-        default=1,
         help="Threads per worker",
     )
     parser.add_argument(
@@ -237,7 +235,12 @@ def get_base_parser():
         "root_dir": os.environ.get("DATA_PATH", "/data"),
         "memory": os.environ.get("MEM_PER_CPU", 0),
         "cores": os.environ.get("CORES", 1),
-        "threads_per_worker": 1,
+        "threads_per_worker": os.environ.get("THREADS_PER_WORKER", 1),
+        "segment_duration": os.environ.get("SEGMENT_LEN", 60.0),
+        "frame": os.environ.get("FRAME", 16000),
+        "hop": os.environ.get("HOP", 4000),
+        "n_fft": os.environ.get("N_FFT", 1024),
+        "min_conf": os.environ.get("MIN_CONF", 0.0),
     })
     return parser
 

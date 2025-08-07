@@ -14,28 +14,24 @@ log = logging.getLogger(__name__)
 tod_cols = ['dawn', 'sunrise', 'noon', 'sunset', 'dusk']
 
 def find_sun(
-    solar_dict: pd.Series,
+    data_dict: pd.Series,
 ) -> Dict[str, Any]:
     loc = LocationInfo(
-        timezone=solar_dict.get("timezone"),
-        latitude=solar_dict.get("latitude"),
-        longitude=solar_dict.get("longitude"),
+        timezone=data_dict.get("timezone"),
+        latitude=data_dict.get("latitude"),
+        longitude=data_dict.get("longitude"),
     )
     s = sun(
         loc.observer,
-        solar_dict["date"],
+        data_dict["date"],
         tzinfo=loc.tzinfo,
     )
-    solar_dict = {
+    return {
         "solar_id": str(uuid.uuid4()),
-        "site_id": str(solar_dict["site_id"]),
-        "date": solar_dict["date"],
-        **{
-            k: s[k].replace(tzinfo=None)
-            for k in s
-        },
+        "site_id": data_dict["site_id"],
+        "date": data_dict["date"],
+        **{ k: s[k].replace(tzinfo=None) for k in s },
     }
-    return solar_dict
 
 def find_solar_boundaries(
     df: pd.DataFrame,
@@ -60,11 +56,10 @@ def find_relative_solar(
     df['dddn'] = df['dddn'].mask(df.timestamp.between(df.sunset - (df.dusk - df.sunset), df.dusk), 'dusk')
     return df
 
-def find_date_and_hour(
+def find_date(
     df: pd.DataFrame,
 ) -> pd.DataFrame:
-    df.loc[:, "hour"] = df.timestamp.dt.hour.astype(np.int8)
-    df.loc[:, "date"] = df.timestamp.dt.date
+    df.loc[:, "date"] = df.timestamp.dt.date.astype("datetime64[ns]")
     return df
 
 def solartimes(

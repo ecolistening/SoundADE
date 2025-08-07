@@ -48,8 +48,6 @@ def index_audio(
     assert dataset in datasets, f"Unsupported dataset '{dataset}'"
     dataset: Dataset = datasets[dataset]()
 
-    start_time = time.time()
-
     root_dir = Path(root_dir)
 
     log.info("Recursively discovering audio files...")
@@ -73,24 +71,19 @@ def index_audio(
         .to_dataframe(meta=file_meta())
     )
 
-    # attach site_id as key reference and drop site name
+    # attach site_id as reference
     if sites is not None:
         sites = sites.reset_index()
-        ddf = (
-            ddf
-            .merge(
-                sites[["site_name", "site_id"]],
-                on="site_name",
-                how="left"
-            )
-            .drop("site_name", axis=1)
+        ddf = ddf.merge(
+            sites[["site_name", "site_id"]],
+            on="site_name",
+            how="left",
         )
 
     # compute immediately
     if compute:
         df = ddf.compute()
         df.to_parquet(Path(out_file), index=False)
-        log.info(f"Time taken for file index: {time.time() - start_time}")
         log.info(f"File index saved to {out_file}")
         return df
 
@@ -145,12 +138,17 @@ def main(
     )
     log.info(client)
 
+    start_time = time.time()
+
     index_audio(
         root_dir=root_dir,
         out_file=out_file,
         dataset=dataset,
         sites=dd.read_parquet(sitesfile),
     )
+
+    log.info(f"File index complete")
+    lof.info(f"Time taken: {time.time() - start_time}")
 
 def get_base_parser():
     parser = argparse.ArgumentParser(

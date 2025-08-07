@@ -1,4 +1,5 @@
 import os
+import dask
 import time
 import logging
 import numpy as np
@@ -44,6 +45,7 @@ def acoustic_features_meta():
         "segment_id": pd.Series(dtype="string[pyarrow]"),
         "segment_idx": pd.Series(dtype="string[pyarrow]"),
         "file_id": pd.Series(dtype="string[pyarrow]"),
+        "duration": pd.Series(dtype="float64[pyarrow]"),
         "offset": pd.Series(dtype="float64[pyarrow]"),
         "frame_length": pd.Series(dtype="int32[pyarrow]"),
         "hop_length": pd.Series(dtype="int32[pyarrow]"),
@@ -62,36 +64,37 @@ def acoustic_features(
     files: pd.DataFrame,
     outfile: str | Path,
     segment_duration: float = 60.0,
+    sample_rate: int | None = None,
     frame: int = 0,
     hop: int = 0,
     n_fft: int = 0,
     npartitions: int = None,
-    save_preprocessed: bool = False,
     compute: bool = False,
-) -> Tuple[dd.DataFrame, dd.Scalar] | pd.DataFrame:
-    start_time = time.time()
-
-    log.info("Loading and filtering corrupt audio...")
-    log.info(f"Chunking into segments of duration {segment_duration}...")
-    files = itertools.chain.from_iterable((
+    **kwargs: Any,
+) -> Tuple[dd.DataFrame, dd.Scalar | None] | pd.DataFrame:
+    log.info("Setting up audio processing pipeline. Corrupt files will be filtered.")
+    b = db.from_sequence(itertools.chain.from_iterable((
         create_file_load_dictionary(audio_dict, seconds=segment_duration)
         for audio_dict in files[files["valid"]].to_dict(orient="records")
-    ))
-    b = db.from_sequence(files, npartitions=npartitions)
+    )), npartitions=npartitions)
 
     log.info(f"Partitions after load: {b.npartitions}")
-    log.info("Extracting acoustic features")
-    ddf = (
-        b.map(load_audio_from_path)
-        .map(remove_dc_offset)
+    log.info(f"Loading audio at {sample_rate}Hz in segments of duration {segment_duration}s")
+    b = b.map(load_audio_from_path, sr=sample_rate)
+    log.info("Removing DC offset and applying highpass filter at 300Hz")
+    b = (
+        b.map(remove_dc_offset)
         .map(high_pass_filter, fcut=300, forder=2, fname="butter", ftype="highpass")
-        .map(extract_scalar_features_from_audio, frame_length=frame, hop_length=hop, n_fft=n_fft)
+    )
+    log.info(f"Extracting acoustic features with FFT params {frame=} {hop=} {n_fft=}")
+    ddf = (
+        b.map(extract_scalar_features_from_audio, frame_length=frame, hop_length=hop, n_fft=n_fft)
         .map(log_features, features=["acoustic evenness index", "root mean square"])
         .map(transform_features, lambda f: np.log(1.0 - np.array(f)), name="log(1-{f})", features=["temporal entropy"])
         .to_dataframe(meta=acoustic_features_meta())
     )
 
-    log.info("Melting dataframe to long form")
+    log.info("Reshaping features dataframe to long form")
     ddf = (
         ddf.melt(
             id_vars=ddf.columns[:ddf.columns.get_loc(Features[0].name)],
@@ -105,8 +108,7 @@ def acoustic_features(
     if compute:
         df = ddf.compute()
         df.to_parquet(Path(outfile), index=False)
-        log.info(f"Time taken for Acoustic Features: {time.time() - start_time}")
-        return df
+        return df, None
 
     future: dd.Scalar = ddf.to_parquet(
         Path(outfile),
@@ -116,7 +118,7 @@ def acoustic_features(
         compute=False,
     )
 
-    log.info(f"Acoustic features queued, will persist to {outfile}")
+    log.info(f"Acoustic features extraction queued. Will persist to {outfile}")
 
     return ddf, future
 
@@ -128,16 +130,9 @@ def main(
     cores=0,
     jobs=0,
     queue='general',
-    segment_duration: float = 60.0,
-    frame: int = 16_000,
-    hop: int = 4_000,
-    n_fft: int = 1024,
-    npartitions=None,
     local: bool = True,
     threads_per_worker: int = 1,
-    compute: bool = False,
     debug: bool = False,
-    save_preprocessed=None,
     **kwargs: Any,
 ) -> dd.DataFrame | None:
     """
@@ -156,7 +151,6 @@ def main(
         n_fft (int, optional): Number of FFT points for feature extraction. Defaults to 16000.
         npartitions (int, optional): Number of partitions for Dask DataFrame. Defaults to 2000.
         local (bool, optional): Flag indicating whether to use a local cluster for computation.
-        save_preprocessed (str, optional): Directory to save preprocessed data. Defaults to None.
         compute (bool, optional): Flag indicating whether to persist parquet eagerly. Defaults to false.
         debug (bool, optional): Flag indicating whether to run synchronously. Defaults to false.
 
@@ -169,7 +163,7 @@ def main(
     Examples:
         >>> main(indir='./data/ecolistening', outfile='./data/processed/ecolistening/features.parquet',
         ...      frame=2048, hop=512, n_fft=1024,
-        ...      local=True, save_preprocessed='./data/processed/ecolistening/processed_audio', compute=True)
+        ...      local=True, compute=True)
         <Client: ...
     """
     assert infile is not None
@@ -196,17 +190,19 @@ def main(
         )
         log.info(client)
 
-    acoustic_features(
+    start_time = time.time()
+
+    _, future = acoustic_features(
         pd.read_parquet(infile),
         outfile=outfile,
-        segment_duration=segment_duration,
-        frame=frame,
-        hop=hop,
-        n_fft=n_fft,
-        save_preprocessed=save_preprocessed,
-        npartitions=npartitions,
-        compute=compute,
+        **kwargs,
     )
+
+    if future is not None:
+        dask.compute(future)
+
+    log.info(f"Acoustic feature extraction complete")
+    lof.info(f"Time taken: {time.time() - start_time}")
 
 def get_base_parser():
     parser = DaskArgumentParser(
@@ -215,7 +211,6 @@ def get_base_parser():
     )
     parser.add_argument(
         '--segment-duration',
-        default=60.0,
         type=float,
         help='Duration for chunking audio segments (defaults to 60s). Specify -1 to use full clip.'
     )
@@ -235,13 +230,13 @@ def get_base_parser():
         help='Number of audio frames for the n_fft.'
     )
     parser.add_argument(
-        '--save-preprocessed',
-        default=None,
-        help='Save the preprocessed files to directory.'
+        "--sample-rate",
+        type=int,
+        help="Audio sample rate for the audio",
     )
     parser.add_argument(
         '--compute',
-        default=False,
+        default=True,
         action='store_true',
         help='Aggregate the dataframe in memory before saving to parquet.'
     )
@@ -254,19 +249,20 @@ def get_base_parser():
     parser.add_argument(
         "--threads-per-worker",
         type=int,
-        default=1,
         help="Threads per worker",
     )
     parser.set_defaults(func=main, **{
         "infile": "/".join([os.environ.get("DATA_PATH", "/data"), "files_table.parquet"]),
         "outfile": "/".join([os.environ.get("DATA_PATH", "/data"), "recording_acoustic_features_table.parquet"]),
+        'local': os.environ.get("LOCAL", True),
         "memory": os.environ.get("MEM_PER_CPU", 0),
         "cores": os.environ.get("CORES", 0),
-        'local': True,
-        'threads_per_worker': 1,
-        'frame': 2048,
-        'hop': 512,
-        'n_fft': 2048,
+        "threads_per_worker": os.environ.get("THREADS_PER_WORKER", 1),
+        "segment_duration": os.environ.get("SEGMENT_LEN", 60.0),
+        "frame": os.environ.get("FRAME", 16_000),
+        "hop": os.environ.get("HOP", 4_000),
+        'n_fft': os.environ.get("N_FFT", 1_024),
+        "sample_rate": os.environ.get("SAMPLE_RATE", 48_000),
     })
     return parser
 

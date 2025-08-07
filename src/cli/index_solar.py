@@ -15,7 +15,7 @@ from typing import Any, Tuple
 from soundade.data.solar import (
     tod_cols,
     find_sun,
-    find_date_and_hour,
+    find_date,
     find_solar_boundaries,
     find_relative_solar,
 )
@@ -30,34 +30,36 @@ cfg.set({
 })
 
 def index_solar(
-    files: dd.DataFrame,
-    sites: pd.DataFrame | dd.DataFrame,
+    files: pd.DataFrame,
+    sites: pd.DataFrame,
     infile: str | Path,
     outfile: str | Path,
     partition_size: int = None,
     npartitions: int = None,
     compute: bool = True,
 ) -> Tuple[dd.DataFrame, dd.DataFrame, dd.Scalar] | Tuple[pd.DataFrame, pd.DataFrame]:
-    start_time = time.time()
-
     # extract date information and drop timestamp
+    log.info("Extracting date from timestamp")
     files_ddf = (
-        files.map_partitions(find_date_and_hour)
+        dd.from_pandas(files)
+        .map_partitions(find_date)
     )
     # stage 1: extract unique solar table, referencing
     log.info("Building solar dataframe containing dawn/dusk/sunrise/sunset information")
-    b = (
+    ddf = (
         files_ddf[["site_id", "date"]]
-        # join location information on site_id for all solar info
-        .merge(sites[["site_id", "latitude", "longitude", "timezone"]], on="site_id", how="left")
         # drop duplicates at a site on a date
-        .drop_duplicates()
-        # map to a bag since the operation is not vectorised
-        .persist() # FIXME: persist required to prevent P2PShuffle Runtime Error -> will this bodge the DAG?
-        .to_bag(format="dict")
-        # extract solar info for that day at that place and store in a solar table
-        .map(find_sun)
+        .drop_duplicates(subset=["site_id", "date"], keep="last")
+        # join location information on site_id for all solar info
+        .join(sites, on="site_id", how="left")
+        .persist()
     )
+    b = (
+        ddf
+        # map to a bag since the operation is not vectorised
+        .to_bag(format="dict")
+    )
+    b = b.map(find_sun)
     # store in a dataframe
     solar_ddf = (
         b.to_dataframe()
@@ -69,7 +71,7 @@ def index_solar(
     files_ddf = (
         files_ddf
         # join on location and date
-        .merge(solar_ddf[["site_id", *solar_columns]], on=["site_id", "date"], how="left")
+        .merge(solar_ddf[["site_id", "solar_id", *solar_columns]], on=["site_id", "date"], how="left")
         # extract solar info relative to time
         .map_partitions(find_relative_solar)
         # drop from files table
@@ -81,7 +83,8 @@ def index_solar(
         solar_df.to_parquet(Path(outfile), index=False)
         files_df = files_ddf.compute()
         files_df.to_parquet(Path(infile), index=False)
-        log.info(f"Time taken: {time.time() - start_time}")
+        log.info(f"Solar index saved to {outfile}")
+        log.info(f"File index updated at {infile}")
         return files_df, solar_df
 
     files_future = files_ddf.to_parquet(
@@ -159,14 +162,19 @@ def main(
         )
         log.info(client)
 
+    start_time = time.time()
+
     index_solar(
-        files=dd.read_parquet(infile),
-        sites=dd.read_parquet(sitesfile),
+        files=pd.read_parquet(infile),
+        sites=pd.read_parquet(sitesfile),
         infile=infile,
         outfile=outfile,
         npartitions=npartitions,
         compute=compute,
     )
+
+    log.info(f"Solar index complete")
+    lof.info(f"Time taken: {time.time() - start_time}")
 
 def get_base_parser():
     parser = DaskArgumentParser(

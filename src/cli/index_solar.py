@@ -18,6 +18,7 @@ from soundade.data.solar import (
     find_date,
     find_solar_boundaries,
     find_relative_solar,
+    find_dddn,
 )
 from soundade.hpc.arguments import DaskArgumentParser
 from soundade.hpc.cluster import clusters
@@ -30,8 +31,8 @@ cfg.set({
 })
 
 def index_solar(
-    files: pd.DataFrame,
-    sites: pd.DataFrame,
+    files_ddf: dd.DataFrame,
+    sites_ddf: dd.DataFrame,
     infile: str | Path,
     outfile: str | Path,
     partition_size: int = None,
@@ -41,17 +42,19 @@ def index_solar(
     # extract date information and drop timestamp
     log.info("Extracting date from timestamp")
     files_ddf = (
-        dd.from_pandas(files)
+        files_ddf
         .map_partitions(find_date)
     )
+
     # stage 1: extract unique solar table, referencing
     log.info("Building solar dataframe containing dawn/dusk/sunrise/sunset information")
+
     ddf = (
         files_ddf[["site_id", "date"]]
         # drop duplicates at a site on a date
         .drop_duplicates(subset=["site_id", "date"], keep="last")
         # join location information on site_id for all solar info
-        .join(sites, on="site_id", how="left")
+        .join(sites_ddf, on="site_id", how="left")
         .persist()
     )
     b = (
@@ -64,18 +67,25 @@ def index_solar(
     solar_ddf = (
         b.to_dataframe()
         .map_partitions(find_solar_boundaries)
+        .astype({"site_id": "string[pyarrow]"})
     )
+
     log.info("Merging with file index, appending times relative to solar timestamps")
+
     # stage 2: join solar info with the file table and calculate file-specific solar data
     solar_columns = ["date", *tod_cols]
+    site_columns = ["timezone", "latitude", "longitude"]
     files_ddf = (
         files_ddf
         # join on location and date
-        .merge(solar_ddf[["site_id", "solar_id", *solar_columns]], on=["site_id", "date"], how="left")
+        .merge(solar_ddf[["site_id", *site_columns, *solar_columns]], on=["site_id", "date"], how="left")
+        # extract dddn
+        .map_partitions(find_dddn)
         # extract solar info relative to time
         .map_partitions(find_relative_solar)
         # drop from files table
         .drop(solar_columns, axis=1)
+        .drop(site_columns, axis=1)
     )
 
     if compute:
@@ -165,8 +175,8 @@ def main(
     start_time = time.time()
 
     index_solar(
-        files=pd.read_parquet(infile),
-        sites=pd.read_parquet(sitesfile),
+        files_ddf=dd.read_parquet(infile),
+        sites_ddf=dd.read_parquet(sitesfile),
         infile=infile,
         outfile=outfile,
         npartitions=npartitions,
@@ -174,7 +184,7 @@ def main(
     )
 
     log.info(f"Solar index complete")
-    lof.info(f"Time taken: {time.time() - start_time}")
+    log.info(f"Time taken: {time.time() - start_time}")
 
 def get_base_parser():
     parser = DaskArgumentParser(

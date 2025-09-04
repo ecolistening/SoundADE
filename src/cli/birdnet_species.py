@@ -1,11 +1,13 @@
 import os
 import argparse
+import datetime as dt
 import time
 import pathlib
 import logging
 import pandas as pd
 
 from dask import config as cfg
+from dask import bag as db
 from dask import dataframe as dd
 from dask.distributed import Client
 from pathlib import Path
@@ -22,37 +24,34 @@ cfg.set({
 })
 
 def birdnet_species(
-    files: pd.DataFrame,
-    sites: pd.DataFrame | pd.DataFrame,
+    files_df: pd.DataFrame,
+    sites_df: pd.DataFrame,
     outfile: str | Path,
     min_conf: float,
     npartitions: int = None,
     compute: bool = False,
 ) -> Tuple[dd.DataFrame, dd.Scalar] | pd.DataFrame:
-    start_time = time.time()
+    log.info(f"Setting up BirdNET species probabilities extraction pipeline.")
+    log.info("Corrupt files will be filtered.")
 
+    files_df = files_df[files_df.valid]
     columns = ["file_id", "local_file_path", "timestamp", "site_id", "valid"]
-    df = files.loc[files["valid"], columns].merge(
-        sites[["site_id", "latitude", "longitude"]],
+    sites_df = sites_df.reset_index()
+    b = db.from_sequence(files_df[columns].merge(
+        sites_df[["site_id", "latitude", "longitude"]],
         on="site_id",
-        how="left"
-    )
+        how="left",
+    ).to_dict(orient="records"), npartitions=npartitions)
 
-    log.info(f"Extracting BirdNET species probabilities...")
+    log.info(f"Partitions after load: {b.npartitions}")
+    log.info(f"Extracting species probabilities with params {min_conf=} for {len(files_df)} files.")
+
     ddf = (
-        db.from_sequence(df.to_dict(orient="records"), npartitions=npartitions)
-        .map(species_probs, min_conf=min_conf)
+        b.map(species_probs, min_conf=min_conf)
         .filter(len)
         .flatten()
         .to_dataframe(meta=species_probs_meta())
     )
-
-    if compute:
-        df = ddf.compute()
-        df.to_parquet(Path(outfile), index=False)
-        log.info(f"Time taken: {time.time() - start_time}")
-        log.info(f"BirdNET species detections saved to {outfile}")
-        return df
 
     future = ddf.to_parquet(
         Path(outfile),
@@ -64,23 +63,27 @@ def birdnet_species(
 
     log.info(f"BirdNET processing queued, will persist to {outfile}")
 
+    if compute:
+        dask.compute(future)
+        return pd.read_parquet(Path(outfile)), None
+
     return ddf, future
 
 def main(
-    cluster: str | None = None,
-    infile: str | Path | None = None,
-    outfile: str | Path | None = None,
-    sitesfile: str | None = None,
-    memory: int = 0,
-    cores: int = 1,
-    jobs: int = 1,
-    queue: str = "general",
-    min_conf: float = 0.5,
-    npartitions: int | None = None,
-    local: bool = True,
-    threads_per_worker: int = 1,
-    compute: bool = False,
-    debug=False,
+    cluster: str | None,
+    infile: str | Path | None,
+    outfile: str | Path | None,
+    sitesfile: str | None,
+    memory: int,
+    cores: int,
+    jobs: int,
+    queue: str,
+    min_conf: float,
+    npartitions: int | None,
+    local: bool,
+    threads_per_worker: int,
+    compute: bool,
+    debug: bool,
     **kwargs: Any,
 ) -> None:
     """
@@ -129,14 +132,18 @@ def main(
         )
         log.info(client)
 
+    start_time = time.time()
+
     birdnet_species(
-        files=pd.read_parquet(infile),
-        sites=pd.read_parquet(sitesfile),
+        files_df=pd.read_parquet(infile),
+        sites_df=pd.read_parquet(sitesfile),
         outfile=outfile,
         min_conf=min_conf,
         npartitions=npartitions,
         compute=compute,
     )
+
+    log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")
 
 def get_base_parser():
     parser = DaskArgumentParser(
@@ -177,7 +184,7 @@ def get_base_parser():
         "infile": "/".join([os.environ.get("DATA_PATH", "/data"), "files_table.parquet"]),
         "outfile": "/".join([os.environ.get("DATA_PATH", "/data"), "birdnet_species_probs_table.parquet"]),
         "sitesfile": "/".join([os.environ.get("DATA_PATH", "/data"), "locations_table.parquet"]),
-        "min_conf": 0.3,
+        "min_conf": os.environ.get("MIN_CONF", 0.0),
         "memory": os.environ.get("MEM_PER_CPU", 0),
         "cores": os.environ.get("CORES", 1),
         "local": True,

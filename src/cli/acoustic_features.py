@@ -1,5 +1,6 @@
 import os
 import dask
+import datetime as dt
 import time
 import logging
 import numpy as np
@@ -61,7 +62,7 @@ def acoustic_features_meta():
     })
 
 def acoustic_features(
-    files: pd.DataFrame,
+    files_df: pd.DataFrame,
     outfile: str | Path,
     segment_duration: float = 60.0,
     sample_rate: int | None = None,
@@ -72,15 +73,19 @@ def acoustic_features(
     compute: bool = False,
     **kwargs: Any,
 ) -> Tuple[dd.DataFrame, dd.Scalar | None] | pd.DataFrame:
-    log.info("Setting up audio processing pipeline. Corrupt files will be filtered.")
+    log.info("Setting up acoustic feature extraction pipeline.")
+    log.info("Corrupt files will be filtered.")
+
     b = db.from_sequence(itertools.chain.from_iterable((
         create_file_load_dictionary(audio_dict, seconds=segment_duration)
-        for audio_dict in files[files["valid"]].to_dict(orient="records")
+        for audio_dict in files_df[files_df["valid"]].to_dict(orient="records")
     )), npartitions=npartitions)
 
     log.info(f"Partitions after load: {b.npartitions}")
     log.info(f"Loading audio at {sample_rate}Hz in segments of duration {segment_duration}s")
+
     b = b.map(load_audio_from_path, sr=sample_rate)
+
     log.info("Removing DC offset and applying highpass filter at 300Hz")
     b = (
         b.map(remove_dc_offset)
@@ -105,11 +110,6 @@ def acoustic_features(
         .dropna(subset="value")
     )
 
-    if compute:
-        df = ddf.compute()
-        df.to_parquet(Path(outfile), index=False)
-        return df, None
-
     future: dd.Scalar = ddf.to_parquet(
         Path(outfile),
         version='2.6',
@@ -119,6 +119,10 @@ def acoustic_features(
     )
 
     log.info(f"Acoustic features extraction queued. Will persist to {outfile}")
+
+    if compute:
+        dask.compute(future)
+        return pd.read_parquet(Path(outfile)), None
 
     return ddf, future
 
@@ -202,7 +206,7 @@ def main(
         dask.compute(future)
 
     log.info(f"Acoustic feature extraction complete")
-    lof.info(f"Time taken: {time.time() - start_time}")
+    log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")
 
 def get_base_parser():
     parser = DaskArgumentParser(
@@ -259,9 +263,9 @@ def get_base_parser():
         "cores": os.environ.get("CORES", 0),
         "threads_per_worker": os.environ.get("THREADS_PER_WORKER", 1),
         "segment_duration": os.environ.get("SEGMENT_LEN", 60.0),
-        "frame": os.environ.get("FRAME", 16_000),
-        "hop": os.environ.get("HOP", 4_000),
-        'n_fft': os.environ.get("N_FFT", 1_024),
+        "frame": os.environ.get("FRAME", 2_048),
+        "hop": os.environ.get("HOP", 512),
+        'n_fft': os.environ.get("N_FFT", 2_048),
         "sample_rate": os.environ.get("SAMPLE_RATE", 48_000),
     })
     return parser

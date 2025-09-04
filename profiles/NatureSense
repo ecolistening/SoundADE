@@ -1,5 +1,0 @@
-"--dataset=NatureSense"
-"--frame=16000"
-"--hop=4000"
-"--n_fft=1024"
-"--segment-duration=60"

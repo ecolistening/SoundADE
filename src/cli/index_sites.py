@@ -28,14 +28,11 @@ def index_sites(
     dataset: str = None,
 ) -> Tuple[dd.DataFrame, dd.Scalar] | pd.DataFrame:
     assert dataset in datasets, f"Unsupported dataset '{dataset}'"
-    dataset: Dataset = datasets[dataset]
+    dataset: Dataset = datasets[dataset]()
 
-    start_time = time.time()
-
-    df = dataset.index_sites(root_dir)
+    df = dataset.index_sites(root_dir, out_file)
 
     df.to_parquet(Path(out_file))
-    log.info(f"Time taken for sites index: {time.time() - start_time}")
     log.info(f"Sites index saved to {out_file}")
 
     return df
@@ -57,11 +54,15 @@ def main(
     Returns:
         pd.DataFrame
     """
+    start_time = time.time()
+
     index_sites(
         root_dir=root_dir,
         out_file=out_file,
         dataset=dataset,
     )
+
+    log.info(f"Time taken for sites index: {time.time() - start_time}")
 
 def get_base_parser():
     parser = argparse.ArgumentParser(

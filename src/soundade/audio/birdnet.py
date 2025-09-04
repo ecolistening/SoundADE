@@ -40,7 +40,7 @@ def _fetch_analyzer():
 
 def species_probs_meta():
     return pd.DataFrame({
-        "file_cid": pd.Series(dtype="string"),
+        "file_id": pd.Series(dtype="string"),
         "min_conf": pd.Series(dtype="float64"),
         "model": pd.Series(dtype="object"),
         "common_name": pd.Series(dtype="object"),
@@ -53,7 +53,7 @@ def species_probs_meta():
 
 def embed_meta():
     return pd.DataFrame({
-        "file_cid": pd.Series(dtype="string"),
+        "file_id": pd.Series(dtype="string"),
         "model": pd.Series(dtype="object"),
         "start_time": pd.Series(dtype="float64"),
         "end_time": pd.Series(dtype="float64"),
@@ -74,7 +74,7 @@ def species_probs(
     """
     Returns a list of detections, each of the form:
     {
-        file_cid: string,
+        file_id: string,
         model: string,
         common_name: string,
         scientific_name: string,
@@ -106,7 +106,7 @@ def species_probs(
     detections = []
     for detection_dict in recording.detections:
         d = detection_dict.copy()
-        d["file_cid"] = audio_dict["file_cid"]
+        d["file_id"] = audio_dict["file_id"]
         d["min_conf"] = min_conf
         d["model"] = f"BirdNET_GLOBAL_6K_V{analyzer.version}"
         detections.append(d)
@@ -169,7 +169,7 @@ def embed(
     """
     Each 3s embedding is returned as a dictionary
     {
-        file_cid: string,
+        file_id: string,
         model: string,
         start_time: float64,
         end_time: float64,
@@ -194,7 +194,7 @@ def embed(
     recording.extract_embeddings()
     return [
         {
-            "file_cid": audio_dict["file_cid"],
+            "file_id": audio_dict["file_id"],
             "model": f"BirdNET_GLOBAL_6K_V{analyzer.version}",
             # concatenate timestep information, all other fields not in the embeddings info
             **{
@@ -260,7 +260,7 @@ def _embed_as_df(
         for embedding_info in recording.embeddings
     ])
     # stack with important metadata
-    df["file_cid"] = audio_dict["file_cid"]
+    df["file_id"] = audio_dict["file_id"]
     df["model"] = f"BirdNET_GLOBAL_6K_V{analyzer.version}"
     # reorder columns to match expected output schema
     return df[schema.columns]

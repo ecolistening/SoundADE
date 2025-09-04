@@ -39,7 +39,7 @@ def file_meta():
 def index_audio(
     root_dir: str | Path,
     out_file: str | Path,
-    sites: pd.DataFrame | dd.DataFrame,
+    sites_ddf: pd.DataFrame | dd.DataFrame,
     dataset: str,
     partition_size: int = None,
     npartitions: int = None,
@@ -56,12 +56,15 @@ def index_audio(
     mp3s = root_dir.rglob("*.[mM][pP]3")
     flacs = root_dir.rglob("*.[fF][lL][aA][cC]")
     file_list = list(itertools.chain(wavs, mp3s, flacs))
+    assert len(file_list), f"No audio files found at {root_dir}"
+    b = db.from_sequence(file_list, partition_size=partition_size, npartitions=npartitions)
 
     log.info(f"{len(file_list)} audio files found. Building file index...")
-    ddf = (
-        db.from_sequence(file_list, partition_size=partition_size, npartitions=npartitions)
+    log.info(f"Partitions: {b.npartitions}")
+
+    files_ddf = (
         # extract audio metadata and attach 'valid' indicator of corrupt audio
-        .map(file_path_to_audio_dict)
+        b.map(file_path_to_audio_dict)
         # attach site hierarchy from audio path
         # e.g. kilpisjarvi/K1, nature_sense/Knepp/S_SW1, cairngorms/Wood, sounding_out/uk/1/15
         .map(dataset.extract_site_name)
@@ -72,22 +75,23 @@ def index_audio(
     )
 
     # attach site_id as reference
-    if sites is not None:
-        sites = sites.reset_index()
-        ddf = ddf.merge(
-            sites[["site_name", "site_id"]],
-            on="site_name",
-            how="left",
+    if sites_ddf is not None:
+        sites_ddf = sites_ddf.reset_index()[["site_name", "site_id"]]
+        files_ddf = (
+            files_ddf
+            .merge(sites_ddf, on="site_name", how="left")
+            .drop("site_name", axis=1)
+            .astype({"site_id": "string[pyarrow]"})
         )
 
     # compute immediately
     if compute:
-        df = ddf.compute()
-        df.to_parquet(Path(out_file), index=False)
+        files_df = files_ddf.compute()
+        files_df.to_parquet(Path(out_file), index=False)
         log.info(f"File index saved to {out_file}")
-        return df
+        return files_df
 
-    future = ddf.to_parquet(
+    future = files_ddf.to_parquet(
         Path(out_file),
         version='2.6',
         allow_truncated_timestamps=True,
@@ -144,11 +148,11 @@ def main(
         root_dir=root_dir,
         out_file=out_file,
         dataset=dataset,
-        sites=dd.read_parquet(sitesfile),
+        sites_ddf=dd.read_parquet(sitesfile),
     )
 
     log.info(f"File index complete")
-    lof.info(f"Time taken: {time.time() - start_time}")
+    log.info(f"Time taken: {time.time() - start_time}")
 
 def get_base_parser():
     parser = argparse.ArgumentParser(

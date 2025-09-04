@@ -7,6 +7,7 @@ import maad.sound
 import numpy as np
 import scipy
 import soundfile
+import struct
 import uuid
 import os
 
@@ -41,12 +42,34 @@ def file_segment_to_cid(file_path, seconds=60):
         cid = CID("base32", 1, "raw", digest)
         return str(cid)
 
+INVALID_AUDIO_DICT = {
+    "valid": False,
+    "duration": None,
+    "sr": None,
+    "channels": None,
+}
+
+class MPEGHeaderError(Exception):
+    pass
+
+def validate_MPEG_header(file_path):
+    with open(file_path, 'rb') as f:
+        header_bytes = f.read(4)
+        if len(header_bytes) < 4:
+            raise MPEGHeaderError("Illegal Audio-MPEG Header, invalidating file")
+        header_int = struct.unpack('>H', header_bytes[:2])[0]
+        if (header_int >> 4) & 0xFFF == 0xFFF or (header_int >> 5) & 0x7FF == 0x7FF:
+            pass
+        else:
+            raise MPEGHeaderError(f"Illegal Audio-MPEG Header for {file_path}")
+
 def valid_audio_file(file_path: str | Path):
     """
     Filter function to remove audio files that soundfile cannot parse
     """
+    p = Path(file_path)
     try:
-        audio_metadata = soundfile.info(file_path)
+        audio_metadata = soundfile.info(p)
         return {
             "valid": True,
             "duration": audio_metadata.duration,
@@ -55,24 +78,28 @@ def valid_audio_file(file_path: str | Path):
         }
     except soundfile.LibsndfileError as e:
         logging.warning(e)
-        return {
-            "valid": False,
-            "duration": None,
-            "sr": None,
-            "channels": None,
-        }
+        return INVALID_AUDIO_DICT
+
 
 def file_path_to_audio_dict(file_path: str | Path) -> Dict[str, Any]:
     """
     Map function to transform a file path to a file index dictionary record
     """
-    audio_metadata = valid_audio_file(file_path)
+    file_size = os.path.getsize(file_path)
+    if file_size <= 0:
+        return {
+            "file_id": str(uuid.uuid4()),
+            "file_name": Path(file_path).name,
+            "local_file_path": str(file_path),
+            "size": file_size,
+            **INVALID_AUDIO_DICT,
+        }
     audio_dict = {
-        "file_id": str(uuid.uuid4()), # str(file_to_cid(file_path)),
+        "file_id": str(uuid.uuid4()),
         "file_name": Path(file_path).name,
         "local_file_path": str(file_path),
-        "size": os.path.getsize(file_path),
-        **audio_metadata,
+        "size": file_size,
+        **valid_audio_file(file_path),
     }
     return audio_dict
 
@@ -104,6 +131,7 @@ def create_file_load_dictionary(
             "segment_idx": i,
             "offset": i * seconds,
             "duration": seconds,
+            "file_duration": duration,
         })
         audio_segment_dicts.append(segment_dict)
     return audio_segment_dicts
@@ -129,9 +157,12 @@ def high_pass_filter(audio_dict: Dict, fcut=300, forder=2, fname='butter', ftype
     audio = audio_dict['audio']
     sr = audio_dict['sr']
 
-    audio_dict['audio'] = maad.sound.select_bandwidth(audio, sr, fcut=fcut, forder=forder, fname=fname, ftype=ftype)
-
+    try:
+        audio_dict['audio'] = maad.sound.select_bandwidth(audio, sr, fcut=fcut, forder=forder, fname=fname, ftype=ftype)
+    except:
+        logging.error(audio_dict)
     return audio_dict
+
 
 
 def extract_banded_audio(audio_dict: Dict, bands: Iterable[Tuple[int, int]]):
@@ -169,16 +200,18 @@ def load_audio_from_path(audio_dict: Dict, sr: int | None = None) -> Dict:
         })
         return {
             "file_id": audio_dict.get("file_id"),
+            "path": audio_dict.get("local_file_path"),
             "segment_id": audio_dict.get("segment_id"),
             "segment_idx": audio_dict.get("segment_idx"),
             "offset": audio_dict.get("offset"),
             "duration": audio_dict.get("duration"),
+            "file_duration": audio_dict.get("file_duration"),
             "sr": sr,
             "audio": audio,
         }
         return audio_dict
     except EOFError as e:
-        logging.warning(f"Couldn't load file at {str(audio_dict['path'])}.")
+        logging.warning(f"Couldn't load file at {str(audio_dict['path'])} with offset {str(audio_dict['offset'])}")
         return None
 
 
@@ -345,3 +378,4 @@ def reformat_for_dataframe(features_dict: Dict, data_keys: List = None, columns_
             data_dicts.append(_meta_dict | {'feature': f} | _labelled_columns)
 
     return data_dicts
+

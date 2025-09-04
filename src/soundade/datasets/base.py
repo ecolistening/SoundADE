@@ -13,10 +13,10 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class Dataset(abc.ABC):
-    def index_sites(self, root_dir: str | Path) -> pd.DataFrame:
-        assert (root_dir / "locations_table").exists(), \
+    def index_sites(self, root_dir: str | Path, sites_file: str | Path) -> pd.DataFrame:
+        assert sites_file.exists(), \
             f"{self.__class__.__name__} locations is not extracted but provided as a separate file"
-        return pd.read_parquet(root_dir / "locations_table.parquet")
+        return pd.read_parquet(sites_file)
 
     def extract_site_name(self, audio_dict: Dict[str, Any]) -> Dict[str, Any]:
         file_path = audio_dict["local_file_path"]
@@ -24,7 +24,8 @@ class Dataset(abc.ABC):
         if match is None:
             log.warning(f"Failed to extract site name on {file_path}")
             return audio_dict
-        audio_dict.update({"site_name": self._extract_site_hierarchy(match)})
+        site_name = self._extract_site_hierarchy(match)
+        audio_dict.update({"site_name": site_name})
         return audio_dict
 
     def extract_timestamp(self, audio_dict: Dict[str, Any]) -> Dict[str, Any]:

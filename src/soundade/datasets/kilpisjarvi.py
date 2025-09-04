@@ -18,7 +18,7 @@ class Kilpisjarvi(Dataset):
         "(?P<recorder>SMA\d{5})_"
         "(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})_"
         "(?P<hour>\d{2})(?P<minute>\d{2})(?P<second>\d{2})"
-        "\.[wav|flac|mp3]"
+        "\.[wav|flac|mp3]+"
     )
 
     # # Used once and commented

@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 from cli import index_sites
 from cli import index_audio
 from cli import index_solar
+from cli import index_weather
 from cli import acoustic_features
 from cli import birdnet_species
 from cli import pipeline
@@ -26,6 +27,7 @@ def main():
         index_sites,
         index_audio,
         index_solar,
+        index_weather,
         acoustic_features,
         birdnet_species,
         pipeline,

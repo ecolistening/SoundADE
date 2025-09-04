@@ -1,4 +1,5 @@
 import os
+import datetime as dt
 import argparse
 import dask
 import logging
@@ -19,6 +20,7 @@ from soundade.datasets import datasets
 from cli.index_sites import index_sites
 from cli.index_audio import index_audio
 from cli.index_solar import index_solar
+from cli.index_weather import index_weather
 from cli.acoustic_features import acoustic_features
 from cli.birdnet_species import birdnet_species
 
@@ -34,11 +36,12 @@ def pipeline(
     save_dir: str | Path,
     sitesfile: str | Path | None,
     dataset: str,
-    segment_duration: float = 60.0,
-    frame: int = 0,
-    hop: int = 0,
-    n_fft: int = 0,
-    min_conf: float = 0.0,
+    sample_rate: int,
+    segment_duration: float,
+    frame: int,
+    hop: int,
+    n_fft: int,
+    min_conf: float,
     partition_size: int = None,
     npartitions: int = None,
 ) -> Tuple[dd.DataFrame, dd.Scalar] | pd.DataFrame:
@@ -53,50 +56,56 @@ def pipeline(
     birdnet_species_probs_path = save_dir / "birdnet_species_probs_table.parquet"
     # begin timing
     start_time = time.time()
-    # index sites if not already available
+    # index sites
+    # NB: this just resaves the parquet file and is effectively redundant
+    # however is left there incase custom behaviour by dataset is required
     log.info(f"Processing site information")
-    if not sitesfile:
-        sites_df = index_sites(
-            root_dir=root_dir,
-            out_file=sites_path,
-            dataset=dataset,
-        )
-    else:
-        sites_df = pd.read_parquet(sitesfile)
+    sites_df = index_sites(
+        root_dir=root_dir,
+        out_file=sites_path,
+        dataset=dataset,
+    )
     # index files
     log.info(f"Indexing audio files")
     files_df = index_audio(
         root_dir=root_dir,
         out_file=files_path,
-        sites=sites_df,
+        sites_ddf=dd.from_pandas(sites_df),
         dataset=dataset,
         compute=True,
     )
     # index solar times
     log.info(f"Indexing solar times")
-    files_df, solar_df = index_solar(
-        files=files_df,
-        sites=sites_df,
+    files_df, _ = index_solar(
+        files_ddf=dd.from_pandas(files_df),
+        sites_ddf=dd.from_pandas(sites_df),
         infile=files_path,
         outfile=solar_path,
         compute=True,
     )
+    log.info(f"Indexing weather data")
+    index_weather(
+        files_df=files_df,
+        sites_df=sites_df,
+        save_dir=save_dir,
+    )
     # extract acoustic featres
     log.info(f"Extracting acoustic features")
     acoustic_features_ddf, acoustic_features_future = acoustic_features(
-        files=files_df,
+        files_df=files_df,
         outfile=recording_acoustic_features_path,
-        segment_duration=segment_duration,
+        sample_rate=sample_rate,
         frame=frame,
         hop=hop,
         n_fft=n_fft,
+        segment_duration=segment_duration,
         compute=False,
     )
     # extract birdnet species scores
     log.info(f"Extracting BirdNET species probabilities")
     birdnet_species_ddf, birdnet_species_future = birdnet_species(
-        files=files_df,
-        sites=sites_df,
+        files_df=files_df,
+        sites_df=sites_df,
         outfile=birdnet_species_probs_path,
         min_conf=min_conf,
         compute=False,
@@ -109,26 +118,27 @@ def pipeline(
     )
     # and we're done!
     log.info("Pipeline complete")
-    log.info(f"Time taken: {time.time() - start_time}")
+    log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")
 
 def main(
     root_dir: str | Path,
     save_dir: str | Path,
-    sitesfile: str | Path | None = None,
-    dataset: str = None,
-    segment_duration: float = 60.0,
-    frame: int = 16_000,
-    hop: int = 4_000,
-    n_fft: int = 1024,
-    min_conf: float = 0.3,
-    memory: int = 4,
-    cores: int = 1,
-    jobs: int = 0,
-    queue: str = 'general',
-    npartitions: int | None = None,
-    local: bool = True,
-    threads_per_worker: int = 1,
-    debug: bool = False,
+    sitesfile: str | Path | None,
+    dataset: str,
+    sample_rate: int,
+    segment_duration: float,
+    frame: int,
+    hop: int,
+    n_fft: int,
+    min_conf: float,
+    memory: int,
+    cores: int,
+    jobs: int,
+    queue: str,
+    threads_per_worker: int,
+    npartitions: int | None,
+    local: bool,
+    debug: bool,
     **kwargs: Any,
 ) -> None:
     if not local:
@@ -157,6 +167,7 @@ def main(
         save_dir=save_dir,
         sitesfile=sitesfile,
         dataset=dataset,
+        sample_rate=sample_rate,
         segment_duration=segment_duration,
         frame=frame,
         hop=hop,
@@ -185,7 +196,6 @@ def get_base_parser():
     parser.add_argument(
         '--sitesfile',
         type=lambda p: Path(p),
-        default="/".join([os.environ.get("DATA_PATH", "/data"), "locations_table.parquet"]),
         help='Refencing a locations.parquet with site-level info (site_name/lat/lng/etc)',
     )
     parser.add_argument(
@@ -194,6 +204,11 @@ def get_base_parser():
         default=os.environ.get("DATASET"),
         choices=datasets.keys(),
         help='Name of the dataset',
+    )
+    parser.add_argument(
+        '--sample-rate',
+        type=int,
+        help='Resample rate for audio'
     )
     parser.add_argument(
         '--segment-duration',
@@ -236,10 +251,11 @@ def get_base_parser():
         "memory": os.environ.get("MEM_PER_CPU", 0),
         "cores": os.environ.get("CORES", 1),
         "threads_per_worker": os.environ.get("THREADS_PER_WORKER", 1),
+        "sample_rate": os.environ.get("SAMPLE_RATE", 48_000),
         "segment_duration": os.environ.get("SEGMENT_LEN", 60.0),
-        "frame": os.environ.get("FRAME", 16000),
-        "hop": os.environ.get("HOP", 4000),
-        "n_fft": os.environ.get("N_FFT", 1024),
+        "frame": os.environ.get("FRAME", 2_048),
+        "hop": os.environ.get("HOP", 512),
+        'n_fft': os.environ.get("N_FFT", 2_048),
         "min_conf": os.environ.get("MIN_CONF", 0.0),
     })
     return parser

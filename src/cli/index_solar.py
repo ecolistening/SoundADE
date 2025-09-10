@@ -48,13 +48,14 @@ def index_solar(
 
     # stage 1: extract unique solar table, referencing
     log.info("Building solar dataframe containing dawn/dusk/sunrise/sunset information")
+    site_columns = ["timezone", "latitude", "longitude"]
 
     ddf = (
         files_ddf[["site_id", "date"]]
         # drop duplicates at a site on a date
         .drop_duplicates(subset=["site_id", "date"], keep="last")
         # join location information on site_id for all solar info
-        .join(sites_ddf, on="site_id", how="left")
+        .join(sites_ddf[site_columns], on="site_id", how="left")
         .persist()
     )
     b = (
@@ -74,7 +75,6 @@ def index_solar(
 
     # stage 2: join solar info with the file table and calculate file-specific solar data
     solar_columns = ["date", *tod_cols]
-    site_columns = ["timezone", "latitude", "longitude"]
     files_ddf = (
         files_ddf
         # join on location and date
@@ -87,6 +87,7 @@ def index_solar(
         .drop(solar_columns, axis=1)
         .drop(site_columns, axis=1)
     )
+    solar_ddf = solar_ddf.drop(site_columns, axis=1)
 
     if compute:
         solar_df = solar_ddf.compute()

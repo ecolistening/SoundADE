@@ -152,6 +152,7 @@ def get_base_parser():
     )
     parser.add_argument(
         "--sitesfile",
+        type=lambda p: Path(p).expanduser(),
         default=None,
         help="Parquet file containing site information.",
     )

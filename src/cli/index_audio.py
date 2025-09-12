@@ -48,7 +48,7 @@ def index_audio(
     assert dataset in datasets, f"Unsupported dataset '{dataset}'"
     dataset: Dataset = datasets[dataset]()
 
-    root_dir = Path(root_dir)
+    root_dir = Path(root_dir).expanduser()
 
     log.info("Recursively discovering audio files...")
 
@@ -161,17 +161,17 @@ def get_base_parser():
     )
     parser.add_argument(
         "--root-dir",
-        type=lambda p: Path(p),
+        type=lambda p: Path(p).expanduser(),
         help="Root directory containing (1) a locations.parquet file and (2) audio files (nested folder structure permitted)",
     )
     parser.add_argument(
         '--out-file',
-        type=lambda p: Path(p),
+        type=lambda p: Path(p).expanduser(),
         help='Parquet file to save results.',
     )
     parser.add_argument(
         '--sitesfile',
-        type=lambda p: Path(p),
+        type=lambda p: Path(p).expanduser(),
         help='Refencing a locations.parquet with site-level info (site_name/lat/lng/etc)',
     )
     parser.add_argument(

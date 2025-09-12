@@ -71,12 +71,12 @@ def get_base_parser():
     )
     parser.add_argument(
         "--root-dir",
-        type=lambda p: Path(p),
+        type=lambda p: Path(p).expanduser(),
         help="Root directory containing (1) a locations.parquet file and (2) audio files (nested folder structure permitted)",
     )
     parser.add_argument(
         '--out-file',
-        type=lambda p: Path(p),
+        type=lambda p: Path(p).expanduser(),
         help='Parquet file to save results.',
     )
     parser.add_argument(

@@ -1,5 +1,5 @@
 import argparse
-
+from pathlib import Path
 
 def parser(description, **kwargs):
     parser = argparse.ArgumentParser(description=description, **kwargs)
@@ -22,13 +22,12 @@ def parser(description, **kwargs):
 
 
 class DaskArgumentParser(argparse.ArgumentParser):
-
     def __init__(self, description, memory=128, cores=1, jobs=4, npartitions=None, queue='general', **kwargs) -> None:
         super().__init__(description=description, **kwargs)
         self.add_argument('--cluster', default='artemis', help='Which cluster to use?')
 
-        self.add_argument('--infile', default=None, help='Input parquet file(s).')
-        self.add_argument('--outfile', default=None, help='Parquet file to save results.')
+        self.add_argument('--infile', type=lambda p: Path(p).expanduser(), default=None, help='Input parquet file(s).')
+        self.add_argument('--outfile', type=lambda p: Path(p).expanduser(), default=None, help='Parquet file to save results.')
 
         self.add_argument('--memory', default=memory, type=int,
                           help='Amount of memory required in GB (total per node).')

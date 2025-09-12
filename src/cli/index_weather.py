@@ -120,19 +120,19 @@ def get_base_parser():
     parser.add_argument(
         "--files-path",
         required=True,
-        type=lambda p: Path(p),
+        type=lambda p: Path(p).expanduser(),
         help="/path/to/files_table.parquet"
     )
     parser.add_argument(
         "--sites-path",
         required=True,
-        type=lambda p: Path(p),
+        type=lambda p: Path(p).expanduser(),
         help="/path/to/locations_table.parquet"
     )
     parser.add_argument(
         "--save-dir",
         default=None,
-        type=lambda p: Path(p),
+        type=lambda p: Path(p).expanduser(),
         help="/path/to/save/dir"
     )
     parser.set_defaults(func=main, **{

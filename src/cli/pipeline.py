@@ -49,6 +49,7 @@ def pipeline(
     assert dataset in datasets, f"Unsupported dataset '{dataset}'"
     # setup data sinks
     save_dir.mkdir(exist_ok=True, parents=True)
+    save_dir = save_dir.expanduser()
     sites_path = sitesfile or save_dir / "locations_table.parquet"
     files_path = save_dir / "files_table.parquet"
     solar_path = save_dir / "solar_table.parquet"
@@ -183,19 +184,19 @@ def get_base_parser():
     )
     parser.add_argument(
         "--root-dir",
-        type=lambda p: Path(p),
+        type=lambda p: Path(p).expanduser(),
         default=os.environ.get("DATA_PATH", "/data"),
         help="Root directory containing audio files",
     )
     parser.add_argument(
         '--save-dir',
-        type=lambda p: Path(p),
+        type=lambda p: Path(p).expanduser(),
         default=os.environ.get("DATA_PATH", "/data"),
         help='Target directory for results',
     )
     parser.add_argument(
         '--sitesfile',
-        type=lambda p: Path(p),
+        type=lambda p: Path(p).expanduser(),
         help='Refencing a locations.parquet with site-level info (site_name/lat/lng/etc)',
     )
     parser.add_argument(

@@ -41,12 +41,12 @@ def get_base_parser():
     )
     parser.add_argument(
         "--src",
-        type=lambda p: Path(p),
+        type=lambda p: Path(p).expanduser(),
         help="/path/to/source/**/*.mp3",
     )
     parser.add_argument(
         "--dest",
-        type=lambda p: Path(p),
+        type=lambda p: Path(p).expanduser(),
         help="/path/to/dest/**/*.wav",
     )
     parser.add_argument(

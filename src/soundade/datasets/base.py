@@ -19,7 +19,7 @@ class Dataset(abc.ABC):
         return pd.read_parquet(sites_file)
 
     def extract_site_name(self, audio_dict: Dict[str, Any]) -> Dict[str, Any]:
-        file_path = audio_dict["local_file_path"]
+        file_path = audio_dict["file_path"]
         match = self._get_match(file_path)
         if match is None:
             log.warning(f"Failed to extract site name on {file_path}")
@@ -29,7 +29,7 @@ class Dataset(abc.ABC):
         return audio_dict
 
     def extract_timestamp(self, audio_dict: Dict[str, Any]) -> Dict[str, Any]:
-        file_path = audio_dict["local_file_path"]
+        file_path = audio_dict["file_path"]
         match = self._get_match(file_path)
         if match is None:
             log.warning(f"Failed to extract timestamp from {file_path}")

@@ -24,10 +24,11 @@ cfg.set({
 })
 
 def birdnet_species(
+    root_dir: Path,
     files_df: pd.DataFrame,
     sites_df: pd.DataFrame,
     outfile: str | Path,
-    min_conf: float,
+    min_conf: float = 0.0,
     npartitions: int = None,
     compute: bool = False,
 ) -> Tuple[dd.DataFrame, dd.Scalar] | pd.DataFrame:
@@ -35,13 +36,11 @@ def birdnet_species(
     log.info("Corrupt files will be filtered.")
 
     files_df = files_df[files_df.valid]
+    files_df["local_file_path"] = root_dir / files_df["file_path"]
     columns = ["file_id", "local_file_path", "timestamp", "site_id", "valid"]
-    sites_df = sites_df.reset_index()
-    b = db.from_sequence(files_df[columns].merge(
-        sites_df[["site_id", "latitude", "longitude"]],
-        on="site_id",
-        how="left",
-    ).to_dict(orient="records"), npartitions=npartitions)
+
+    records = files_df[columns].join(sites_df[["latitude", "longitude"]], on="site_id").to_dict(orient="records")
+    b = db.from_sequence(records, npartitions=npartitions)
 
     log.info(f"Partitions after load: {b.npartitions}")
     log.info(f"Extracting species probabilities with params {min_conf=} for {len(files_df)} files.")
@@ -70,20 +69,20 @@ def birdnet_species(
     return ddf, future
 
 def main(
+    root_dir: Path,
+    infile: Path,
+    outfile: Path,
+    sitesfile: Path,
     cluster: str | None,
-    infile: str | Path | None,
-    outfile: str | Path | None,
-    sitesfile: str | None,
-    memory: int,
-    cores: int,
-    jobs: int,
-    queue: str,
-    min_conf: float,
-    npartitions: int | None,
-    local: bool,
-    threads_per_worker: int,
-    compute: bool,
-    debug: bool,
+    memory: int = 0,
+    cores: int = 0,
+    jobs: int = 0,
+    queue: str = "general",
+    min_conf: float = 0.0,
+    npartitions: int | None = None,
+    local: bool = True,
+    threads_per_worker: int = 1,
+    debug: bool = False,
     **kwargs: Any,
 ) -> None:
     """
@@ -107,9 +106,6 @@ def main(
     Examples:
         >>> main(infile='./audio_file_index.parquet', outfile='./birdnet_predictions.parquet', sitesfile='./locations.parquet')
     """
-    assert infile is not None
-    assert outfile is not None
-
     if not local:
         Cluster = clusters[cluster]
         cluster = Cluster(
@@ -135,9 +131,10 @@ def main(
     start_time = time.time()
 
     birdnet_species(
-        files_df=pd.read_parquet(infile),
-        sites_df=pd.read_parquet(sitesfile),
-        outfile=outfile,
+        root_dir,
+        pd.read_parquet(infile),
+        pd.read_parquet(sitesfile),
+        outfile,
         min_conf=min_conf,
         npartitions=npartitions,
         compute=compute,
@@ -149,6 +146,11 @@ def get_base_parser():
     parser = DaskArgumentParser(
         description="Extract species probabilities using BirdNET",
         add_help=False,
+    )
+    parser.add_argument(
+        "--root-dir",
+        type=lambda p: Path(p).expanduser(),
+        help="Root directory of the audio files (nested folder structure permitted)",
     )
     parser.add_argument(
         "--sitesfile",
@@ -182,6 +184,7 @@ def get_base_parser():
         help="Threads per worker",
     )
     parser.set_defaults(func=main, **{
+        "root_dir": os.environ.get("DATA_PATH", "/data"),
         "infile": "/".join([os.environ.get("DATA_PATH", "/data"), "files_table.parquet"]),
         "outfile": "/".join([os.environ.get("DATA_PATH", "/data"), "birdnet_species_probs_table.parquet"]),
         "sitesfile": "/".join([os.environ.get("DATA_PATH", "/data"), "locations_table.parquet"]),

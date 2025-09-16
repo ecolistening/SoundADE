@@ -26,7 +26,7 @@ def file_meta():
     return pd.DataFrame({
         "file_id": pd.Series(dtype="string[pyarrow]"),
         "file_name": pd.Series(dtype="string[pyarrow]"),
-        "local_file_path": pd.Series(dtype="string[pyarrow]"),
+        "file_path": pd.Series(dtype="string[pyarrow]"),
         "size": pd.Series(dtype="int64[pyarrow]"),
         "valid": pd.Series(dtype="bool[pyarrow]"),
         "duration": pd.Series(dtype="float64[pyarrow]"),
@@ -55,16 +55,17 @@ def index_audio(
     wavs = root_dir.rglob("*.[wW][aA][vV]")
     mp3s = root_dir.rglob("*.[mM][pP]3")
     flacs = root_dir.rglob("*.[fF][lL][aA][cC]")
-    file_list = list(itertools.chain(wavs, mp3s, flacs))
-    assert len(file_list), f"No audio files found at {root_dir}"
-    b = db.from_sequence(file_list, partition_size=partition_size, npartitions=npartitions)
+    file_paths = list(itertools.chain(wavs, mp3s, flacs))
+    assert len(file_paths), f"No audio files found at {root_dir}"
+    file_paths = [file_path.relative_to(root_dir) for file_path in file_paths]
+    b = db.from_sequence(file_paths, partition_size=partition_size, npartitions=npartitions)
 
-    log.info(f"{len(file_list)} audio files found. Building file index...")
+    log.info(f"{len(file_paths)} audio files found. Building file index...")
     log.info(f"Partitions: {b.npartitions}")
 
     files_ddf = (
         # extract audio metadata and attach 'valid' indicator of corrupt audio
-        b.map(file_path_to_audio_dict)
+        b.map(file_path_to_audio_dict, root_dir=root_dir)
         # attach site hierarchy from audio path
         # e.g. kilpisjarvi/K1, nature_sense/Knepp/S_SW1, cairngorms/Wood, sounding_out/uk/1/15
         .map(dataset.extract_site_name)
@@ -162,7 +163,7 @@ def get_base_parser():
     parser.add_argument(
         "--root-dir",
         type=lambda p: Path(p).expanduser(),
-        help="Root directory containing (1) a locations.parquet file and (2) audio files (nested folder structure permitted)",
+        help="Root directory of the audio files (nested folder structure permitted)",
     )
     parser.add_argument(
         '--out-file',

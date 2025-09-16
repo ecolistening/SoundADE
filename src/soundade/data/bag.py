@@ -81,25 +81,25 @@ def valid_audio_file(file_path: str | Path):
         return INVALID_AUDIO_DICT
 
 
-def file_path_to_audio_dict(file_path: str | Path) -> Dict[str, Any]:
+def file_path_to_audio_dict(file_path: str | Path, root_dir: str | Path) -> Dict[str, Any]:
     """
     Map function to transform a file path to a file index dictionary record
     """
-    file_size = os.path.getsize(file_path)
+    file_size = os.path.getsize(root_dir / file_path)
     if file_size <= 0:
         return {
             "file_id": str(uuid.uuid4()),
             "file_name": Path(file_path).name,
-            "local_file_path": str(file_path),
+            "file_path": str(file_path),
             "size": file_size,
             **INVALID_AUDIO_DICT,
         }
     audio_dict = {
         "file_id": str(uuid.uuid4()),
         "file_name": Path(file_path).name,
-        "local_file_path": str(file_path),
+        "file_path": str(file_path),
         "size": file_size,
-        **valid_audio_file(file_path),
+        **valid_audio_file(root_dir / file_path),
     }
     return audio_dict
 
@@ -108,6 +108,7 @@ def copy_except_audio(d: Dict):
 
 def create_file_load_dictionary(
     audio_dict: Dict[str, Any],
+    root_dir: Path,
     seconds: float | None = None,
     sr: int = None,
 ):
@@ -120,7 +121,7 @@ def create_file_load_dictionary(
     :return:
     """
     audio_segment_dicts = []
-    duration = librosa.get_duration(path=audio_dict["local_file_path"])
+    duration = librosa.get_duration(path=root_dir / audio_dict["file_path"])
     seconds = duration if seconds == -1 else seconds
     seconds = seconds or duration
     segments = int(duration // seconds)
@@ -183,7 +184,7 @@ def extract_banded_audio(audio_dict: Dict, bands: Iterable[Tuple[int, int]]):
 
     return audio_dicts
 
-def load_audio_from_path(audio_dict: Dict, sr: int | None = None) -> Dict:
+def load_audio_from_path(audio_dict: Dict, root_dir: Path, sr: int | None = None) -> Dict:
     '''Load audio from a path and place into a dictionary for Bag storage
 
     :param p: Path of file to load
@@ -192,7 +193,7 @@ def load_audio_from_path(audio_dict: Dict, sr: int | None = None) -> Dict:
     sr = sr or audio_dict.get("sr")
     try:
         audio, _ = librosa.load(**{
-            "path": audio_dict.get("local_file_path"),
+            "path": root_dir / audio_dict.get("file_path"),
             "sr": sr,
             "mono": True,
             "offset": audio_dict.get("offset"),
@@ -200,7 +201,6 @@ def load_audio_from_path(audio_dict: Dict, sr: int | None = None) -> Dict:
         })
         return {
             "file_id": audio_dict.get("file_id"),
-            "path": audio_dict.get("local_file_path"),
             "segment_id": audio_dict.get("segment_id"),
             "segment_idx": audio_dict.get("segment_idx"),
             "offset": audio_dict.get("offset"),
@@ -211,7 +211,7 @@ def load_audio_from_path(audio_dict: Dict, sr: int | None = None) -> Dict:
         }
         return audio_dict
     except EOFError as e:
-        logging.warning(f"Couldn't load file at {str(audio_dict['path'])} with offset {str(audio_dict['offset'])}")
+        logging.warning(f"Couldn't load file at {str(root_dir / audio_dict['file_path'])} with offset {str(audio_dict['offset'])}")
         return None
 
 

@@ -1,0 +1,14 @@
+services:
+  app:
+    container_name: soundade
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ${DATA_PATH}:/data
+      - ${SAVE_PATH}:/results
+    env_file:
+      - .env
+    tty: true
+    stdin_open: true
+    command: uv run main.py pipeline

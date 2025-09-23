@@ -1,0 +1,77 @@
+@startuml
+allowmixing
+package "Input files" as files {
+        component [~*~.wav] as wav
+        component [recorder and timing data\n(in filenames and directory structure)] as rec
+}
+
+rectangle "process_files~.py" as process {
+        object "Dataset~.load()" as load
+        load : - Take only channel 0 from audio
+        load : (except where corrupt and Ch 1 is taken)
+        load : - load data as dask bag
+
+        object "SoundingOutDiurnal~.extract_features()" as extract
+        extract : via soundade.data.bag:
+        extract : - extract_features_from_audio()
+        extract : - log_features()
+        extract : - transform_features()
+
+        object "extract_features_from_audio()" as audio
+        audio : via soundade.audio.feature.vector:
+        audio : via maad:
+        audio : - spectral_flux()
+        audio : - acoustic_evenness_index()
+        audio : - acoustic_complexity_index()
+        audio : - spectral_entropy()
+        audio : - temporal_entropy()
+        audio : - bioacoustic_index()
+        audio : via librosa:
+        audio : - zero_crossing_rate()
+        audio : - spectral_centroid()
+        audio : - root_mean-square()
+
+        object "log_features()" as log
+        log : - log(acoustic evenness index)
+        log : - log(root mean square)
+
+        object "transform_features()" as trans
+        trans : - log (1 - temporal entropy)
+
+        object "SoundingOutDiurnal.metadata()" as meta
+        meta : - filename_metadata()
+        meta : - country_habitat()
+
+        object "filename_metadata()" as filename
+        filename : Extract:
+        filename : - location
+        filename : - recorder
+        filename : - channel
+        filename : - timestamp
+
+        object "country_habitat()" as chabi
+        chabi : Extract:
+        chabi : - country
+        chabi : - habitat code
+        chabi : - habitat
+
+        load --> extract
+        extract .r.> audio
+        extract .r.> log
+        extract .r.> trans
+        audio -d[hidden]-> log
+        log -d[hidden]-> trans
+        trans -d[hidden]-> meta
+        extract -d-> meta
+        meta .r.> filename
+        meta .r.> chabi
+        filename -d[hidden]-> chabi
+}
+
+package "Output files" as out {
+        component [processed~.parquet] as par
+}
+
+files -d-> process
+process -d-> out
+@enduml

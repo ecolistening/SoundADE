@@ -16,6 +16,8 @@ from typing import Any, Tuple
 from soundade.audio.birdnet import species_probs, species_probs_meta
 from soundade.hpc.arguments import DaskArgumentParser
 
+PYARROW_VERSION = "2.6"
+
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
@@ -53,6 +55,7 @@ def birdnet_detections(
 
     future = ddf.to_parquet(
         Path(outfile),
+        version=PYARROW_VERSION,
         allow_truncated_timestamps=True,
         write_index=False,
         compute=False

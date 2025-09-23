@@ -27,6 +27,8 @@ from soundade.data.bag import (
     extract_scalar_features_from_audio,
 )
 
+PYARROW_VERSION = "2.6"
+
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
@@ -99,6 +101,7 @@ def acoustic_features(
 
     future: dd.Scalar = ddf.to_parquet(
         Path(outfile),
+        version=PYARROW_VERSION,
         allow_truncated_timestamps=True,
         write_index=False,
         compute=False,

@@ -19,6 +19,8 @@ from soundade.datasets import datasets
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
+PYARROW_VERSION = "2.6"
+
 def file_meta():
     return pd.DataFrame({
         "file_id": pd.Series(dtype="string[pyarrow]"),
@@ -82,12 +84,14 @@ def index_audio(
             files_ddf
             .merge(sites_ddf[["site_name", "site_id"]], on="site_name", how="left")
             .drop("site_name", axis=1)
-            .astype({"site_id": "string[pyarrow]"})
+            # opinion: drop files that haven't been assigned a site
             .dropna(subset="site_id")
+            .astype({"site_id": "string[pyarrow]"})
         )
 
     future = files_ddf.to_parquet(
         Path(out_file),
+        version=PYARROW_VERSION,
         allow_truncated_timestamps=True,
         write_index=False,
         compute=False,

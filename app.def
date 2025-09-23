@@ -5,7 +5,11 @@ From: python:3.10-slim-bookworm
   export PATH=/root/.local/bin:$PATH
 
 %files
-  . /app
+  src /app/src
+  config /app/config
+  main.py /app/main.py
+  pyproject.toml /app/pyproject.toml
+  uv.lock /app/uv.lock
 
 %post
   # install global dependencies

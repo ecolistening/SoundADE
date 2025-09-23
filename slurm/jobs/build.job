@@ -9,4 +9,4 @@
 #SBATCH --mem 16G
 #SBATCH --cpus-per-task 8
 
-singularity build --ignore-fakeroot-command -F app.sif app.def
+singularity build --fakeroot app.sif app.def

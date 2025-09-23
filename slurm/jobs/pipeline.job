@@ -7,4 +7,7 @@
 #SBATCH --ntasks=1
 #SBATCH --partition=general
 
-singularity run --env-file .env -B $DATA_PATH:/data app.sif pipeline
+singularity run --env-file .env \
+                --bind $DATA_PATH:/data \
+                --bind $SAVE_PATH:/results \
+                app.sif

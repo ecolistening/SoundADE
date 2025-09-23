@@ -1,4 +1,4 @@
 #!/bin/bash
 
 mkdir -p ./logs
-sbatch ./slurm/jobs/build.sh
+sbatch ./slurm/jobs/build.job

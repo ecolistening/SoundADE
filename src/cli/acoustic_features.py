@@ -232,14 +232,12 @@ def get_base_parser():
     )
     parser.add_argument(
         "--high-pass-filter",
-        type=int,
         default=True,
         action="store_true",
         help="Apply a high pass filter",
     )
     parser.add_argument(
         "--dc-correction",
-        type=int,
         default=True,
         action="store_true",
         help="Apply DC Correction",

@@ -58,7 +58,9 @@ elif [[ $DO_LOCAL = true  ]] ; then
                           --cores=$CORES \
                           --memory=$MEM_PER_CPU \
                           --min-conf=$MIN_CONF \
-                          --segment-duration=$SEGMENT_LEN
+                          --segment-duration=$SEGMENT_LEN \
+                          --dc-correction=$DC_CORR \
+                          --high-pass-filter=$HIGH_PASS_FILTER
 
 else
   usage

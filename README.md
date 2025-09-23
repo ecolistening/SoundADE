@@ -26,6 +26,12 @@ If using SLURM based HPC, scripts to schedule these builds can be found under th
 
 As with docker, you must rebuild every time you make changes to the source code.
 
+If you need to inspect your container once its build, run:
+
+```sh
+singularity exec --env-file .env --bind $DATA_PATH:/data app.sif /bin/sh
+```
+
 ## Usage
 Run the whole pipeline, specifying the relevant option depending on your setup configuration (docker / singularity / local python environment).
 

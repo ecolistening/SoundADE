@@ -41,7 +41,7 @@ elif [[ $DO_SLURM = true  ]] ; then
   echo "Running using slurm batch scheduler"
   sbatch --cpus-per-task=$CORES \
          --mem-per-cpu="${MEM_PER_CPU}G" \
-         ./slurm/pipeline.sh
+         ./slurm/jobs/pipeline.job
 
 elif [[ $DO_LOCAL = true  ]] ; then
   echo "Running in local anaconda environment"

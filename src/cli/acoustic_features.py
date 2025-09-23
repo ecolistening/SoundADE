@@ -23,7 +23,7 @@ from soundade.data.bag import (
     log_features,
     transform_features,
     remove_dc_offset,
-    high_pass_filter,
+    apply_high_pass_filter,
     extract_scalar_features_from_audio,
 )
 
@@ -71,9 +71,10 @@ def acoustic_features(
     log.info("Setting up acoustic feature extraction pipeline.")
     log.info("Corrupt files will be filtered.")
 
+    audio_dicts = files_df[files_df["valid"]].to_dict(orient="records")
     b = db.from_sequence(itertools.chain.from_iterable((
         create_file_load_dictionary(audio_dict, root_dir=root_dir, seconds=segment_duration, sr=sample_rate)
-        for audio_dict in files_df[files_df["valid"]].to_dict(orient="records")
+        for audio_dict in audio_dicts
     )), npartitions=npartitions)
 
     log.info(f"Partitions after load: {b.npartitions}")
@@ -87,7 +88,7 @@ def acoustic_features(
 
     if high_pass_filter:
         log.info("Applying highpass filter at 300Hz")
-        b = b.map(high_pass_filter, fcut=300, forder=2, fname="butter", ftype="highpass")
+        b = b.map(apply_high_pass_filter, fcut=300, forder=2, fname="butter", ftype="highpass")
 
     log.info(f"Extracting acoustic features with FFT params {frame=} {hop=} {n_fft=}")
     ddf = (
@@ -107,7 +108,7 @@ def acoustic_features(
         compute=False,
     )
 
-    log.info(f"Queued acoustic feature extraction. Will persist to {outfile}")
+    log.info(f"Queued {len(audio_dicts)} files for acoustic feature extraction. Will persist to {outfile}")
 
     if compute:
         dask.compute(future)

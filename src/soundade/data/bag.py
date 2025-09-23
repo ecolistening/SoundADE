@@ -101,7 +101,7 @@ def remove_dc_offset(audio_dict: Dict):
     audio_dict['audio'] = dc_offset(audio_dict['audio'])
     return audio_dict
 
-def high_pass_filter(audio_dict: Dict, fcut=300, forder=2, fname='butter', ftype='highpass'):
+def apply_high_pass_filter(audio_dict: Dict, fcut=300, forder=2, fname='butter', ftype='highpass'):
     audio = audio_dict['audio']
     sr = audio_dict['sr']
     try:

@@ -1,16 +1,18 @@
 FROM python:3.10-slim-bookworm
 
+# install global dependencies
 RUN apt-get update
-RUN apt-get install --no-install-recommends -y curl git ffmpeg
+RUN apt-get install -y --no-install-recommends curl ca-certificates git ffmpeg
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-ADD https://astral.sh/uv/0.7.8/install.sh /uv-installer.sh
+# install UV
+ADD https://astral.sh/uv/0.7.13/install.sh /uv-installer.sh
 RUN sh /uv-installer.sh && rm /uv-installer.sh
-ENV PATH="/root/.local/bin:$PATH"
+ENV PATH="/root/.local/bin/:$PATH"
 
+# move code into container
 ADD . /app
 WORKDIR /app
-RUN uv sync --locked
 
-ENTRYPOINT []
-CMD ["uv", "run", "main.py", "pipeline"]
+# install local dependencies
+RUN uv sync --locked

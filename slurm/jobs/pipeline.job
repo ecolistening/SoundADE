@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=soundade
-#SBATCH --output=soundade."%j".out
-#SBATCH --error=soundade."%j".err
+#SBATCH --output=./logs/soundade."%j".out
+#SBATCH --error=./logs/soundade."%j".err
 #SBATCH --mail-user $USER@sussex.ac.uk
 #SBATCH --mail-type=ALL
 #SBATCH --ntasks=1

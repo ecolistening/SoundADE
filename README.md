@@ -13,6 +13,11 @@ docker compose up --build
 ### Singularity
 Some HPC admins don't give users sudo privileges required to run docker. The project can be built using singularity which doesn't require privileges and is usually installed on HPC systems.
 
+```
+singularity build --fakeroot app.sif app.def
+```
+
+When on a machine you have sudo privileges, fakeroot isn't required, you can run:
 ```sh
 singularity build --ignore-fakeroot-command -F app.sif app.def
 ```

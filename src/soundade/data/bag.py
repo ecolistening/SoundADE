@@ -1,182 +1,168 @@
 import itertools
 import logging
-from datetime import timedelta
-from typing import Dict, List, Iterable, Callable, Tuple
-
 import librosa
 import maad
 import maad.features
 import maad.sound
 import numpy as np
-import scipy
+import os
+import soundfile
+import uuid
+
+from pathlib import Path
+from typing import Any, Dict, List, Iterable, Callable, Tuple
 
 from soundade.audio.feature.scalar import Features as ScalarFeatures
-from soundade.audio.feature.vector import Features
+from soundade.audio.feature.vector import Features, do_spectrogram
 from soundade.audio.filter import dc_offset
 
 FRAME_LENGTH, HOP_LENGTH = 16000, 4000
 
+logging.basicConfig(level=logging.INFO)
+
+INVALID_AUDIO_DICT = {
+    "valid": False,
+    "duration": None, "sr": None,
+    "channels": None,
+}
+
+def valid_audio_file(file_path: str | Path):
+    """Filter function to mark audio files that soundfile cannot parse as invalid
+
+    :param file_path str | pathlib.Path: path to the audio file
+    :return a dictionary of the form { valid: bool, duration: float, sr: int, channels: int }
+    """
+    try:
+        audio_metadata = soundfile.info(Path(file_path))
+        return {
+            "valid": True,
+            "duration": audio_metadata.duration,
+            "sr": audio_metadata.samplerate,
+            "channels": audio_metadata.channels,
+        }
+    except soundfile.LibsndfileError as e:
+        logging.warning(e)
+        return INVALID_AUDIO_DICT
+
+def file_path_to_audio_dict(file_path: str | Path, root_dir: str | Path) -> Dict[str, Any]:
+    """Transform a file path to a file index dictionary record
+
+    :param file_path str | pathlib.Path: relative path to the audio file
+    :param root_dir str | pathlib.Path: root directory of the audio
+    :return a dictionary of the form:
+            { file_id: str, file_name: str, file_path: str, size: int, valid: bool, duration: float, sr: int, channels: int }
+    """
+    file_size = os.path.getsize(root_dir / file_path)
+    return {
+        "file_id": str(uuid.uuid4()),
+        "file_name": Path(file_path).name,
+        "file_path": str(file_path),
+        "size": file_size,
+        **valid_audio_file(root_dir / file_path),
+    }
 
 def copy_except_audio(d: Dict):
     return dict([k, d[k]] for k in set(list(d.keys())) - {'audio'})
 
+def create_file_load_dictionary(
+    audio_dict: Dict[str, Any],
+    root_dir: Path,
+    seconds: float | None = None,
+    sr: int | None = None,
+) -> List[Dict[str, Any]]:
+    """Create N offset dictonaries for each S length audio segment
 
-def create_file_load_dictionary(files: List, sr=None):
-    """
-    
-    :param files: 
+    :param audio_dict: A dictionary of the form:
+           { file_id: str, segment_id: str | int, file_path: str }
+    :param seconds: Duration of each audio segment
     :param sr: Leaving sr as the default None ensures that librosa will load the file at its native sample rate. 
-    :return: 
+    :return:
     """
-    audio_dicts = []
-    for f in files:
-        d = {
-            'path': f,
-            'sr': sr,
-        }
-        audio_dicts.append(d)
-
-    return audio_dicts
-
-
-def create_file_segment_load_dictionary(files: List, seconds: float = 60.0, sr=None):
-    audio_segments_dicts = []
-    for f in files:
-        duration = librosa.get_duration(filename=f, sr=sr)
-        segments = int(duration // seconds)
-        for i in range(segments):
-            d = {
-                'path': f,
-                'sr': sr,
-                'offset': i * seconds,
-                'duration': seconds
-            }
-            audio_segments_dicts.append(d)
-
-    return audio_segments_dicts
-
+    audio_segment_dicts = []
+    duration = librosa.get_duration(
+        path=root_dir / audio_dict["file_path"],
+        sr=sr or audio_dict.get("sr")
+    )
+    seconds = duration if seconds == -1 else seconds
+    seconds = seconds or duration
+    segments = int(duration // seconds)
+    for t in range(segments):
+        segment_dict = audio_dict.copy()
+        segment_dict.update({
+            "segment_id": str(uuid.uuid4()),
+            "segment_idx": t,
+            "offset": t * seconds,
+            "duration": seconds,
+        })
+        audio_segment_dicts.append(segment_dict)
+    return audio_segment_dicts
 
 def remove_dc_offset(audio_dict: Dict):
     audio_dict['audio'] = dc_offset(audio_dict['audio'])
     return audio_dict
 
-
 def high_pass_filter(audio_dict: Dict, fcut=300, forder=2, fname='butter', ftype='highpass'):
     audio = audio_dict['audio']
     sr = audio_dict['sr']
-
-    audio_dict['audio'] = maad.sound.select_bandwidth(audio, sr, fcut=fcut, forder=forder, fname=fname, ftype=ftype)
-
+    try:
+        audio_dict['audio'] = maad.sound.select_bandwidth(audio, sr, fcut=fcut, forder=forder, fname=fname, ftype=ftype)
+    except:
+        logging.error(audio_dict)
     return audio_dict
-
 
 def extract_banded_audio(audio_dict: Dict, bands: Iterable[Tuple[int, int]]):
     audio = audio_dict['audio']
     sr = audio_dict['sr']
     audio_dicts = []
-
     # Filter at all bands
     for low, high in bands:
         d = copy_except_audio(audio_dict)
         ba = maad.sound.select_bandwidth(audio, fs=sr, fcut=[low, high], forder=2, ftype='bandpass')
-
         d['low'] = low
         d['high'] = high
         d['audio'] = ba
-
         audio_dicts.append(d)
-
     return audio_dicts
 
+def load_audio_from_path(audio_dict: Dict, root_dir: Path, sr: int | None = None) -> Dict:
+    """Load audio from a path and place into a dictionary for bag storage
 
-def load_audio_from_path(audio_dict: Dict) -> Dict:
-    '''Load audio from a path and place into a dictionary for Bag storage
-
-    :param p: Path of file to load
+    :param audio_dict: A dictionary of the form:
+           { file_id: str | int, segment_id: str | int, file_path: str, offset: float, duration: float }
+    :param root_dir: Root path of audio
     :return: Dict representation of audio file.
-    '''
+    """
+    sr = sr or audio_dict.get("sr")
     try:
-        audio, sr = librosa.load(**audio_dict)
-
-        data_dict = {
-            'path': str(audio_dict['path']),
-            'file': audio_dict['path'].name,
-            'audio': audio,
-            'sr': sr
+        audio, _ = librosa.load(**{
+            "path": root_dir / audio_dict.get("file_path"),
+            "sr": sr,
+            "mono": True,
+            "offset": audio_dict.get("offset"),
+            "duration": audio_dict.get("duration"),
+        })
+        return {
+            "file_id": audio_dict.get("file_id"),
+            "segment_id": audio_dict.get("segment_id"),
+            "segment_idx": audio_dict.get("segment_idx"),
+            "offset": audio_dict.get("offset"),
+            "duration": audio_dict.get("duration"),
+            "sr": sr,
+            "audio": audio,
         }
-
-        return data_dict
+        return audio_dict
     except EOFError as e:
-        logging.warning(f"Couldn't load file at {str(audio_dict['path'])}.")
-
+        logging.warning(f"Couldn't load file at {str(root_dir / audio_dict['file_path'])} with offset {str(audio_dict['offset'])}")
         return None
 
-
-def load_audio_segment_from_path(audio_segment_dict: Dict) -> Dict:
-    '''Load audio from a path and place into a dictionary for Bag storage
-
-    :param p: Path of file to load
-    :return: Dict representation of audio file.
-    '''
-    audio, sr = librosa.load(**audio_segment_dict)
-
-    data_dict = {
-        'path': str(audio_segment_dict['path']),
-        'file': audio_segment_dict['path'].name,
-        'audio': audio,
-        'sr': sr
-    }
-
-    # Add these if they exist
-    try:
-        data_dict |= {'offset': audio_segment_dict['offset']}
-        data_dict |= {'duration': audio_segment_dict['duration']}
-    except KeyError as e:
-        pass
-
-    return data_dict
-
-
-def split_audio(audio_dict: Dict, seconds: int = 60) -> List[Dict]:
-    '''NOT USED. Split audio contained in an audio_dict into S-second long segments
-
-    :param audio_dict:
-    :param seconds:
-    :return:
-    '''
-    # split_audio_dict = audio_dict.copy()
-
-    audio: np.ndarray = audio_dict.get('audio')
-    split_audio_dict = copy_except_audio(audio_dict)
-    sr = split_audio_dict.get('sr')
-
-    segment_length = int(sr * seconds)
-
-    splits = np.split(audio,
-                      range(segment_length, audio.size, segment_length))  # Split audio on multiples of segment_length
-    splits = filter(lambda s: s.size == segment_length, splits)  # Remove trailing segments that are mismatched
-
-    return [split_audio_dict | {
-        'time offset': i * timedelta(seconds=seconds),
-        'segment length': timedelta(seconds=seconds),
-        'audio': s,
-    } for i, s in enumerate(splits)]
-
-
-def power_spectra_from_audio(audio_dict: Dict, **kwargs):
-    # Make sure to copy ALL data from the data dict
-    data_dict = copy_except_audio(audio_dict)
-
-    # Remove the raw audio, which we don't want anymore
-    audio = audio_dict.get('audio')
-
-    data_dict['bins'], data_dict['psd'] = scipy.signal.welch(audio, fs=data_dict['sr'], nperseg=1024)
-
-    return data_dict
-
-
-def extract_features_from_audio(audio_dict: Dict, frame_length: int = FRAME_LENGTH, hop_length: int = HOP_LENGTH,
-                                n_fft: int = FRAME_LENGTH, lim_from_dict=False, **kwargs) -> Dict:
+def extract_vector_features_from_audio(
+    audio_dict: Dict,
+    frame_length: int = FRAME_LENGTH,
+    hop_length: int = HOP_LENGTH,
+    n_fft: int = FRAME_LENGTH,
+    lim_from_dict: bool = False,
+    **kwargs: Any,
+) -> Dict:
     '''Extract features from audio in audio_dict
 
     :param lim_from_dict: Take the frequency limits (for AEI and BI) from the 'low' and 'high' entries in the dictionary
@@ -187,35 +173,45 @@ def extract_features_from_audio(audio_dict: Dict, frame_length: int = FRAME_LENG
     :param kwargs:
     :return:
     '''
-
     # Make sure to copy ALL data from the data dict
     data_dict = copy_except_audio(audio_dict)
-
     # Remove the raw audio, which we don't want anymore
-    audio = audio_dict.get('audio')
-
+    audio = audio_dict.pop('audio')
+    spectrogram = do_spectrogram(
+        audio,
+        frame_length=frame_length,
+        hop_length=hop_length
+    )
     # Update
     data_dict.update({
-        'frame length': frame_length,
-        'hop length': hop_length,
-        'n fft': n_fft,
-        'feature length': 0,
+        'frame_length': frame_length,
+        'hop_length': hop_length,
+        'n_fft': n_fft,
+        'feature_length': 0,
     })
-
     if lim_from_dict:
         kwargs = kwargs | {'flim', (data_dict['low'], data_dict['high'])}
-
     for feature in Features:
-        comp = feature.compute(audio, frame_length=frame_length, hop_length=hop_length, n_fft=n_fft,
-                               sr=audio_dict.get('sr'), **kwargs)
-        data_dict[feature.name] = comp.flatten().tolist()
-        data_dict['feature length'] = max(len(data_dict[feature.name]), data_dict['feature length'])
-
+        data_dict[feature.name] = feature.compute(
+            audio,
+            frame_length=frame_length,
+            hop_length=hop_length,
+            n_fft=n_fft,
+            sr=audio_dict.get('sr'),
+            spectrograms=spectrogram,
+            **kwargs
+        ).flatten().tolist()
+        data_dict['feature_length'] = max(len(data_dict[feature.name]), data_dict['feature_length'])
     return data_dict
 
-
-def extract_scalar_features_from_audio(audio_dict: Dict, frame_length: int = FRAME_LENGTH, hop_length: int = HOP_LENGTH,
-                                       n_fft: int = FRAME_LENGTH, lim_from_dict=False, **kwargs) -> Dict:
+def extract_scalar_features_from_audio(
+    audio_dict: Dict,
+    frame_length: int = FRAME_LENGTH,
+    hop_length: int = HOP_LENGTH,
+    n_fft: int = FRAME_LENGTH,
+    lim_from_dict: bool = False,
+    **kwargs: Any,
+) -> Dict:
     '''Extract features from audio in audio_dict
 
     :param lim_from_dict: Take the frequency limits (for AEI and BI) from the 'low' and 'high' entries in the dictionary
@@ -226,70 +222,31 @@ def extract_scalar_features_from_audio(audio_dict: Dict, frame_length: int = FRA
     :param kwargs:
     :return:
     '''
-
     # Make sure to copy ALL data from the data dict
     data_dict = copy_except_audio(audio_dict)
-
     # Remove the raw audio, which we don't want anymore
     audio = audio_dict.get('audio')
-
     # Update
     data_dict.update({
-        'frame length': frame_length,
-        'hop length': hop_length,
-        'n fft': n_fft,
-        'feature length': 0,
+        'frame_length': frame_length,
+        'hop_length': hop_length,
+        'n_fft': n_fft,
+        'feature_length': 0,
     })
-
     if lim_from_dict:
         kwargs = kwargs | {'flim', (data_dict['low'], data_dict['high'])}
-
     for feature in ScalarFeatures:
         comp = feature.compute(audio, frame_length=frame_length, hop_length=hop_length, n_fft=n_fft,
                                sr=audio_dict.get('sr'), **kwargs)
         data_dict[feature.name] = comp
-
     return data_dict
 
-
-def log_features(features_dict: Dict, features: Iterable = []):
+def log_features(features_dict: Dict, features: Iterable = [], epsilon: float = 1e-8):
     for f in features:
-        features_dict[f'log {f}'] = np.log(features_dict[f])
-
+        features_dict.update({f'log {f}': np.log(np.array(features_dict[f]) + epsilon).tolist()})
     return features_dict
-
 
 def transform_features(features_dict: Dict, transformation: Callable, name='{f}', features: Iterable = []):
     for f in features:
-        print('Doing feature: ' + name.format(f=f))
-        features_dict[name.format(f=f)] = transformation(features_dict[f])
-
+        features_dict.update({name.format(f=f): transformation(features_dict[f])})
     return features_dict
-
-
-def reformat_for_dataframe(features_dict: Dict, data_keys: List = None, columns_key=None, scalar_values=False):
-    # Default for feature processing
-    if data_keys is None:
-        data_keys = [f.name for f in Features]
-
-    _features_dict = features_dict.copy()
-
-    if columns_key is not None:
-        column_names = _features_dict.pop(columns_key)
-
-    # Set metadata
-    _meta_keys = [k for k in _features_dict.keys() if k not in data_keys]
-    _meta_dict = {k: _features_dict.pop(k) for k in _meta_keys}
-
-    data_dicts = []
-    for f in _features_dict:
-        if scalar_values:
-            data_dicts.append(_meta_dict | {'feature': f, 'value': _features_dict[f]})
-        else:
-            if columns_key is None:
-                column_names = itertools.count()
-            _labelled_columns = {f'{n}': x for n, x in zip(column_names, _features_dict[f])}
-
-            data_dicts.append(_meta_dict | {'feature': f} | _labelled_columns)
-
-    return data_dicts

@@ -1,8 +1,8 @@
 import argparse
+from pathlib import Path
 
-
-def parser(description):
-    parser = argparse.ArgumentParser(description=description)
+def parser(description, **kwargs):
+    parser = argparse.ArgumentParser(description=description, **kwargs)
 
     dataset_group = parser.add_mutually_exclusive_group()
     dataset_group.add_argument('--ecuador', action='store_true', help='Process the files from Ecuador')
@@ -22,13 +22,12 @@ def parser(description):
 
 
 class DaskArgumentParser(argparse.ArgumentParser):
+    def __init__(self, description, memory=128, cores=1, jobs=4, npartitions=None, queue='general', **kwargs) -> None:
+        super().__init__(description=description, **kwargs)
+        self.add_argument('--cluster', default='artemis', help='Which cluster to use?')
 
-    def __init__(self, description, memory=128, cores=1, jobs=4, npartitions=100, queue='test.long') -> None:
-        super().__init__(description=description)
-        self.add_argument('--cluster', default='altair', help='Which cluster to use?')
-
-        self.add_argument('--infile', default=None, help='Input parquet file(s).')
-        self.add_argument('--outfile', default=None, help='Parquet file to save results.')
+        self.add_argument('--infile', type=lambda p: Path(p).expanduser(), default=None, help='Input parquet file(s).')
+        self.add_argument('--outfile', type=lambda p: Path(p).expanduser(), default=None, help='Parquet file to save results.')
 
         self.add_argument('--memory', default=memory, type=int,
                           help='Amount of memory required in GB (total per node).')
@@ -39,5 +38,5 @@ class DaskArgumentParser(argparse.ArgumentParser):
         self.add_argument('--queue', default=queue, type=str, help='Job queue to select.')
 
         local = self.add_mutually_exclusive_group()
-        local.add_argument('--local', dest='local', default=False, action='store_true')
+        local.add_argument('--local', dest='local', default=True, action='store_true')
         local.add_argument('--hpc', dest='local', default=False, action='store_false')

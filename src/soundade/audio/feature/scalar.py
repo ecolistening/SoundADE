@@ -62,6 +62,7 @@ def spectral_flux(y=None, sr=48000, S=None, n_fft=2048, hop_length=512, use_fini
     return np.mean(dist)
 
 
+# FIXME: BIG NOTE: frame, hop and n_fft parameters are ignored ENTIRELY in the scalar features when this spectrogram function is used.
 def __spectrogram(y=None, frame_length=2048, hop_length=512, pad_mode='constant', spec_mode='amplitude', sr=48000,
                   nperseg=1024, noverlap=None, **kwargs):
     return maad.sound.spectrogram(y, sr, nperseg=nperseg, noverlap=noverlap, mode=spec_mode)

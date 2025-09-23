@@ -1,23 +1,18 @@
-FROM continuumio/anaconda3:2023.03-1
-#LABEL authors="David Kadish"
+FROM python:3.10-slim-bookworm
 
-WORKDIR /code
+# install global dependencies
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends curl ca-certificates git ffmpeg
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Create the environment:
-COPY environment.yml .
-RUN conda env create -f environment.yml
-RUN conda develop -n soundade /workspaces/SoundADE/src/
+# install UV
+ADD https://astral.sh/uv/0.7.13/install.sh /uv-installer.sh
+RUN sh /uv-installer.sh && rm /uv-installer.sh
+ENV PATH="/root/.local/bin/:$PATH"
 
-# Replace the RUN command macro to use the new environment:
-SHELL ["conda", "run", "-n", "soundade", "-v", "/bin/bash", "-c"]
+# move code into container
+ADD . /app
+WORKDIR /app
 
-# Demonstrate the environment is activated:
-RUN echo "Make sure pandas is installed:"
-RUN python -c "import pandas"
-
-# The code to run when container is started:
-COPY data/ /code/data/
-COPY scripts/process_files.py /code/process_files.py
-COPY src/soundade/ /code/soundade/
-
-ENTRYPOINT ["conda", "run", "-n", "soundade", "python", "./process_files.py", "--local", "--indir", "./data/ecolistening", "--outfile", "./data/processed/ecolistening", "--dataset", "SoundingOutDiurnal", "--frame=2048", "--hop=412", "--n_fft=2048", "--save-preprocessed=./data/processed/ecolistening", "--compute", "--debug"]
+# install local dependencies
+RUN uv sync --locked

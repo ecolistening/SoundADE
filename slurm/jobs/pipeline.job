@@ -1,0 +1,13 @@
+#!/bin/bash
+#SBATCH --job-name=soundade
+#SBATCH --output=./logs/soundade."%j".out
+#SBATCH --error=./logs/soundade."%j".err
+#SBATCH --mail-user $USER@sussex.ac.uk
+#SBATCH --mail-type=ALL
+#SBATCH --ntasks=1
+#SBATCH --partition=general
+
+singularity run --env-file .env \
+                --bind $DATA_PATH:/data \
+                --bind $SAVE_PATH:/results \
+                app.sif

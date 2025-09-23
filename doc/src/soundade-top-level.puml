@@ -1,0 +1,52 @@
+@startuml
+allowmixing
+package "Audio + location + time metadata" {
+        component [wav files] as wav
+        component [geographic data \n(in site_locations.parquet file)] as geo
+        component [recorder, location and timing data \n(in filenames)] as rec
+}
+
+node "SoundADE pipeline" as pipe {
+        object "process_files~.py" as p0
+        p0 : - Take only channel 0 from audio
+        p0 : (except where corrupt and Ch 1 is taken)
+        p0 : - Extracts features from wav files
+        p0 : - Extracts metadata from filenames
+        p0 : * Outputs: /processed.parquet
+        object "append_metadata~.py" as p1
+        p1 : - Extracts dawn/day/dusk/night data
+        p1 : * Outputs: /solar.parquet
+        object "prefilter~.py" as p2
+        p2 : - Filters out days with too few recordings
+        p2 : - Selects first 10 days of data from each recorder
+        p2 : - Filters out days where recorders are missing data
+        p2 : * Outputs: /prefilter.parquet
+        object "to_long~.py" as p3
+        p3 : - Convert a wide-form dataframe to long-form
+        p3 : * Outputs: /to_long.parquet
+        object "summary_stats~.py" as p4
+        p4 : - Calculate mean, stddev, skew, kurtosis of audio features
+        p4 : * Outputs: /summary_stats.parquet
+        object "astrograms~.py --histogram" as p5
+        p5 : - Create histograms of the data
+        p5 : * Outputs: /histograms.parquet
+        object "astrograms~.py --astrogram" as p6
+        p6 : - Create astrograms of the data
+        p6 : * Outputs: /astrograms.parquet
+        object "lempel_ziv_complexity~.py --astrogram" as p7
+        p7 : - Calculate Lempel Ziv Complexity
+        p7 : * Outputs: /lz_complexity.parquet
+        p0 --> p1
+        p1 --> p2
+        p2 --> p3
+        p2 --> p7
+        p3 --> p4
+        p3 --> p5
+        p3 --> p6
+}
+
+wav --> p0
+rec --> p0
+geo --> p1
+
+@enduml

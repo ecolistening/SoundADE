@@ -1,117 +1,117 @@
-from pathlib import Path
-
+import logging
 import pandas as pd
+import numpy as np
+import uuid
+
 from astral import LocationInfo
-from astral.sun import sun
+from astral import sun
+from pathlib import Path
+from typing import Any, Dict, List
 
-from typing import Union
-
-locations_default = Path(__file__).parent / '../../../data/site_locations.parquet'
-
-def find_sun(r, locations):
-    loc = LocationInfo(name=r.location,
-                       region=locations[locations.location == r.location].iloc[0, :].country,
-                       timezone=locations[locations.location == r.location].iloc[0, :].timezone,
-                       latitude=locations[(locations.location == r.location) & (locations.recorder == r.recorder)].latitude,
-                       longitude=locations[(locations.location == r.location) & (locations.recorder == r.recorder)].longitude
-                       )
-    s = sun(loc.observer, r.date, tzinfo=loc.tzinfo)
-
-    return dict([(k, s[k].replace(tzinfo=None)) for k in s])
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 tod_cols = ['dawn', 'sunrise', 'noon', 'sunset', 'dusk']
 
-def solartimes(dataframe: pd.DataFrame, locations: Union[pd.DataFrame, Path, str] = locations_default) -> pd.DataFrame:
-    """
-    Calculate solar event times (dawn, sunrise, sunset, dusk) for each timestamp in the given dataframe.
-
-    Args:
-        dataframe (pd.DataFrame): The input dataframe containing timestamps and other data.
-        locations (pd.DataFrame | Path | str, optional): The locations dataframe or path to the locations file. Defaults to locations_default.
-
-    Returns:
-        pd.DataFrame: The dataframe with solar times and other calculated features.
-
-    Raises:
-        FileNotFoundError: If the locations file is not found.
-
-    Notes:
-        - The dataframe should have a column named 'timestamp' containing the timestamps.
-        - The dataframe may contain duplicate indices, which will be reset.
-        - The dataframe should have metadata columns before the 'timestamp' column.
-        - The locations dataframe should have columns 'latitude', 'longitude', and 'timezone'.
-
-    Example:
-        >>> dataframe = pd.DataFrame({'timestamp': ['2022-01-01 12:00:00', '2022-01-01 13:00:00'], 'location': ['A', 'B']})
-        >>> locations = pd.DataFrame({'location': ['A', 'B'], 'latitude': [40.7128, 34.0522], 'longitude': [-74.0060, -118.2437], 'timezone': ['America/New_York', 'America/Los_Angeles']})
-        >>> solartimes(dataframe, locations)
-    """
-def solartimes(dataframe: pd.DataFrame, locations: Union[pd.DataFrame, Path, str] = locations_default) -> pd.DataFrame:
-
-
-    # print(f'dataframe: {dataframe.shape}')
-
-    # There may be duplicate indices in the dataframe, so we reset the indices,
-    # creating a column called 'index' that can be used to join metadata and features later
-    dataframe = dataframe.reset_index()
-
-    # Split the dataframe into metadata and features columns
-    metadata = dataframe.iloc[:,:dataframe.columns.get_loc('0')]
-    features = dataframe.iloc[:,dataframe.columns.get_loc('0'):]
-
-    if len(dataframe.index) == 0:
-        d = {t:'M' for t in tod_cols} | {f'hours before {t}':'float64' for t in tod_cols} | {'dawn start': 'M', 'dusk_start': 'M', 'dddn':'string'}
-        return pd.concat([metadata,pd.DataFrame(columns=list(d.keys())).astype(d),features])
-
-    # Load locations, if necessary
-    if isinstance(locations, Path) or isinstance(locations, str):
-        locations = pd.read_parquet(locations)
-
-    #TODO: Why do we do this?
-    df_meta = dataframe.assign(date=lambda r: r.timestamp.dt.date)[['location', 'recorder', 'date']].drop_duplicates()
-
-    suntimes = df_meta.apply(find_sun, locations=locations, axis=1, result_type='expand')
-    
-    # Remove TZ info because our dates in the DB are without time zones
-    for c in suntimes.columns:
-        suntimes[c] = suntimes[c].dt.tz_localize(None)
-
-    # Replace the location/recorder/date metadata
-    suntimes = df_meta.join(suntimes)
-
-    # print(f'Suntimes: {suntimes.shape}')
-
-    # We reset_index again here to preserve the new index in the merge.
-    # This creates a column called 'level_0' that is set as the index after the merge operation.
-    df_suntimes = metadata.reset_index().assign(date=lambda r: r.timestamp.dt.date).merge(suntimes, on=['location', 'recorder', 'date'], how='inner').drop(columns=['date']).set_index('level_0')
-
-    # display(df_suntimes)
-
-    # print(f'df suntimes: {df_suntimes.shape}')
-
-    # Convert to hours past event format
-    df_suntimes[[f'hours after {t}' for t in tod_cols]] = df_suntimes[tod_cols].subtract(
-        df_suntimes.timestamp.to_numpy().reshape(-1, 1), axis=0).div(pd.Timedelta(hours=1)).mul(-1)
-
-    # Grouping into dawn/day/dusk/night
-    df_suntimes['dawn end'] = df_suntimes.sunrise.add(df_suntimes.sunrise.subtract(df_suntimes.dawn))
-    df_suntimes['dusk start'] = df_suntimes.sunset.subtract(df_suntimes.dusk.subtract(df_suntimes.sunset))
-
-    df_suntimes['dddn'] = 'day'
-    df_suntimes['dddn'] = df_suntimes['dddn'].mask(
-        ~df_suntimes.timestamp.between(df_suntimes.dawn, df_suntimes.dusk), 'night'
+def find_sun(
+    data_dict: pd.Series,
+) -> Dict[str, Any]:
+    loc = LocationInfo(
+        timezone=data_dict.get("timezone"),
+        latitude=data_dict.get("latitude"),
+        longitude=data_dict.get("longitude"),
     )
-    df_suntimes['dddn'] = df_suntimes['dddn'].mask(
-        df_suntimes.timestamp.between(df_suntimes.dawn, df_suntimes.sunrise + (df_suntimes.sunrise - df_suntimes.dawn)),
-        'dawn'
+    solar_dict = {}
+    try:
+        solar_dict["dawn"] = sun.dawn(loc.observer, data_dict["date"], tzinfo=loc.tzinfo).replace(tzinfo=None)
+    except ValueError as e:
+        log.warning(e)
+        solar_dict["dawn"] = None
+    try:
+        solar_dict["sunrise"] = sun.sunrise(loc.observer, data_dict["date"], tzinfo=loc.tzinfo).replace(tzinfo=None)
+    except ValueError as e:
+        log.warning(e)
+        solar_dict["sunrise"] = None
+    try:
+        solar_dict["noon"] = sun.noon(loc.observer, data_dict["date"], tzinfo=loc.tzinfo).replace(tzinfo=None)
+    except ValueError as e:
+        log.warning(e)
+        solar_dict["noon"] = None
+    try:
+        solar_dict["sunset"] = sun.sunset(loc.observer, data_dict["date"], tzinfo=loc.tzinfo).replace(tzinfo=None)
+    except ValueError as e:
+        log.warning(e)
+        solar_dict["sunset"] = None
+    try:
+        solar_dict["dusk"] = sun.dusk(loc.observer, data_dict["date"], tzinfo=loc.tzinfo).replace(tzinfo=None)
+    except ValueError as e:
+        log.warning(e)
+        solar_dict["dusk"] = None
+    return {
+        **data_dict,
+        **solar_dict,
+    }
+
+def find_solar_boundaries(
+    df: pd.DataFrame,
+) -> pd.DataFrame:
+    try:
+        df['dawn_end'] = df["sunrise"].add(df["sunrise"].subtract(df["dawn"]))
+        df['dusk_start'] = df["sunset"].subtract(df["dusk"].subtract(df["sunset"]))
+    except ValueError as e:
+        df["dawn_end"] = None
+        df["dusk_start"] = None
+    return df
+
+def classify_phase(row, twilight_angle=-6):
+    loc = LocationInfo(
+        timezone=row.timezone,
+        latitude=row.latitude,
+        longitude=row.longitude,
     )
-    df_suntimes['dddn'] = df_suntimes['dddn'].mask(df_suntimes.timestamp.between(
-        df_suntimes.sunset - (df_suntimes.dusk - df_suntimes.sunset), df_suntimes.dusk), 'dusk'
+    elevation = sun.elevation(loc.observer, row.timestamp)
+    azimuth = sun.azimuth(loc.observer, row.timestamp)
+    dddn = None
+    if elevation > 0:
+        dddn = "day"
+    elif elevation <= twilight_angle:
+        dddn = "night"
+    elif azimuth < 180:
+        dddn = "dawn"
+    else:
+        dddn = "dusk"
+    return dddn
+
+def find_dddn(
+    df: pd.DataFrame,
+) -> pd.DataFrame:
+    df["dddn"] = df.apply(classify_phase, axis=1)
+    return df
+
+# DEPRECATED: left for future reference on our previous method
+# def find_dddn(
+#     df: pd.DataFrame,
+# ) -> pd.DataFrame:
+#     df['dddn'] = 'day'
+#     df['dddn'] = df['dddn'].mask(~df.timestamp.between(df.dawn, df.dusk), 'night')
+#     df['dddn'] = df['dddn'].mask(df.timestamp.between(df.dawn, df.sunrise + (df.sunrise - df.dawn)), 'dawn')
+#     df['dddn'] = df['dddn'].mask(df.timestamp.between(df.sunset - (df.dusk - df.sunset), df.dusk), 'dusk')
+#     return df
+
+def find_relative_solar(
+    df: pd.DataFrame,
+) -> pd.DataFrame:
+    relative_to_time_columns = [f'hours after {t}' for t in tod_cols]
+    times = df["timestamp"].to_numpy().reshape(-1, 1)
+    df[relative_to_time_columns] = (
+        df[tod_cols].subtract(times, axis=0)
+        .div(pd.Timedelta(hours=1))
+        .mul(-1)
     )
+    return df
 
-    # print(f'join: {df_suntimes.join(features).shape}')
-
-    # The original index is reset as map_partitions assumes that the index does not change.
-    df = df_suntimes.join(features).set_index('index')
-
+def find_date(
+    df: pd.DataFrame,
+) -> pd.DataFrame:
+    df.loc[:, "date"] = df.timestamp.dt.date.astype("datetime64[ns]")
     return df

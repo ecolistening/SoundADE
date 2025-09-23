@@ -4,52 +4,85 @@ Acoustic Descriptor Extraction tool for processing sound on High Performance Com
 ## Installation
 
 ### Docker
-Docker caches builds in layers and so is convenient for fast iteration and development when running locally. Using the `docker-ce` package, you can build a docker image using:
+Install `docker-ce` package. You can then build and run the full pipeline using:
 
-`sudo docker build --tag 'soundade' .`
+```sh
+docker compose up --build
+```
 
-You must redo this every time you make changes to the source code. However `settings.env` is passed in at run time so you do not need to rebuild if you're just changing things in there.
+### Singularity
+Some HPC admins don't give users sudo privileges required to run docker. The project can be built using singularity which doesn't require privileges and is usually installed on HPC systems.
 
-### Singularity/apptainer
-Some HPC admins don't give users the sudo priveleges required to run docker. Therefore the project can be built using singularity/apptainer which doesn't require priveleges and is usually installed on HPC systems.
-
-`singularity build --ignore-fakeroot-command -F app.sif app.def`
+```sh
+singularity build --ignore-fakeroot-command -F app.sif app.def
+```
 
 If using SLURM based HPC, scripts to schedule these builds can be found under the `slurm` directory.
 
-As with docker, you must rebuild every time you make changes to the source code. However `settings.env` is still passed in at run time so you do not need to rebuild if you're just changing things in there.
+As with docker, you must rebuild every time you make changes to the source code.
 
-### Local environment
-You can use a local conda environment if you want. Be aware that your local conda version/API might have drifted since the development of this project.
+## Usage
+Run the whole pipeline, specifying the relevant option depending on your setup configuration (docker / singularity / local python environment).
 
-`conda env create -f environment.yml`
+```
+./run.sh
+```
 
-Then add the source code to the conda environment:
-`conda run -n soundade python -m pip install .`
-
-
-## Running the code
-
-`settings.env` contains run time settings for the pipeline:
+## Environment Variables
+`.env` contains run time settings for the pipeline:
 
 - `DATA_PATH`: the path to the audio data you want processed N.B. Your `site_locations.parquet` file must also be in this location
-- `PROFILE_PATH`: the path to a text file defining FFT parameters and dataset options N.B. these parameters are in a separate file to `settings.env` on purpose, so that they can be captured as part of the run-time environment record
+- `SAVE_PATH`: the path to where you want the results saved. Your `locations.parquet` file must be in this location. For more details on the `locations.parquet` see below.
 - `CORES`: the number of cores (local) or jobs (HPC) to be deployed to process your data
 - `MEM_PER_CPU`: the integer number of gigabytes of RAM deployed *per core or job*
-- `STEPS`: a colon`:` delimeted string of `true` and `false` variables denoting which steps of the pipeline to run
+- `DATASET`: must map to the name of a dataset class in `src/soundade/datasets`.
+- `SAMPLE_RATE`: a resample rate for the audio. If comparable features are desired across different sample rates, you should resample to the minimum sample rate in your dataset.
+- `FRAME`: the number of samples used for computing a frame for certain audio features e.g. zero crossing rate.
+- `HOP`: the hop size used for the FFT for audio features derived from the spectrogram, e.g. spectral centroid.
+- `N_FFT`: the number of samples per FFT window, determining the time-frequency resolution for audio features derived from the spectrogram.
+- `MIN_CONF`: a threshold value for BirdNET species detection probabilities. Detections below this threshold are ignored. Defaults to 0.0.
+- `SEGMENT_LEN`: for longer audio files, we first chunk the audio into segments. Defaults to 60s. Features are then calculated over each segment independently.
 
-Depending on your installation method you can use the `run-pipeline.sh` script with the appropriate flag:
+### Location Information
+A regular expression is required to find and extract audio files along with their location information. See `./config` for examples.
+
+A file specifying site-specific information is required for the pipeline to run.
+
+| site_id | site_name | latitude | longitude | timezone |
+|---------|-----------|----------|-----------|----------|
+| string \| integer | string | float32 | float32 | string |
+
+You need to ensure the `site_name` field matches the regular expression defined in the data class.
+
+For example, consider the following folder structure:
 
 ```
-usage: ./run-pipeline.sh -s # Run using singularity container
-       ./run-pipeline.sh -d # Run using docker container
-       ./run-pipeline.sh -b # Run using slurm batch scheduler
-       ./run-pipeline.sh -l # Run in local anaconda environment
+└─── <site_level_1>
+    └── <site_level_2>
+        ├── <site_level_2>
+        ├── ├─ <timestamp>.wav
+        │   ├─ ....
+        │   └─ <timestamp>.wav
+        ├── <site_level_2>
+        └── ├─ <timestamp>.wav
+            ├─ ....
+            └─ <timestamp>.wav
 ```
 
-Output parquet files will be written to `$DATA_PATH/processed`, and details of the runtime settings/environment will be written to `$DATA_PATH/run-environment`. These runtime settings might help to reconstruct pipeline settings to aid reproducibility.
+The `site_name` variable should match `/<site_level_1>/<site_level_2>/<site_level_3>`.
 
-### Troubleshooting
+```
+└─── EC
+    └── TE
+        ├── 9
+        ├── ├─ 20150619_0630.wav
+        │   ├─ ....
+        │   └─ 20150621_0317.wav
+        ├── 10
+        └── ├─ 20150619_0630.wav
+            ├─ ....
+            └─ 20150621_0317.wav
+```
 
-#### Solving Environment | Killed
-Sometimes the environement solving step can take up too much memory (especially for a login node on a cluster). This can be fixed by removing channels from the YAML file. For me, removing `anaconda` and `defaults` did the trick.
+In this case `<site_level_1>` is the country (EC = Ecuador), `<site_level_2>` is a site identifier (TE), and `<site_level_3>` is a recorder ID number. Therefore the `site_name` column must contain records `'/EC/TE/9'` for `'/EC/TE/10'`. The depth for the site level is arbitrary, you can define as many as you like in the regular expression for discovering audio files.
+

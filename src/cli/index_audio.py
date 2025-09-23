@@ -83,6 +83,7 @@ def index_audio(
             .merge(sites_ddf[["site_name", "site_id"]], on="site_name", how="left")
             .drop("site_name", axis=1)
             .astype({"site_id": "string[pyarrow]"})
+            .dropna(subset="site_id")
         )
 
     future = files_ddf.to_parquet(

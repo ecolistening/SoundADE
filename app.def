@@ -1,0 +1,31 @@
+Bootstrap: docker
+From: python:3.10-slim-bookworm
+
+%environment
+  export PATH=/cargo/bin:$PATH
+  export PATH=/root/.local/bin:$PATH
+
+%files
+  . /app
+
+%post
+  apt-get update
+  apt-get install --no-install-recommends curl git ffmpeg -y
+  apt-get clean && rm -rf /var/lib/apt/lists/*
+
+  mkdir /cargo
+  curl -LsSf https://astral.sh/uv/0.7.8/install.sh -o /uv-installer.sh
+  CARGO_HOME=/cargo sh /uv-installer.sh && rm /uv-installer.sh
+  export PATH=/root/.local/bin:$PATH
+
+  mkdir -p /app
+  cd /app
+  uv sync --locked
+
+%runscript
+  cd /app
+  uv run main.py "$@"
+
+%labels
+  Author k.a.gibb@sussex.ac.uk, nrs23@sussex.ac.uk, david.kadish@mau.se
+  Version v1.0.0

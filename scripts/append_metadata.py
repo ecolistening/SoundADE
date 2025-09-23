@@ -1,47 +1,39 @@
+import datetime as dt
+import numpy as np
 import pandas as pd
+import pyarrow as pa
+import logging
+
 from dask import dataframe as dd
 from dask.distributed import Client, LocalCluster
-import pyarrow as pa
+from pathlib import Path
 
-from soundade.data.datasets import SoundingOutDiurnal
+from soundade.datasets import datasets
+from soundade.datasets.base import Dataset
+from soundade.datasets.sounding_out_diurnal import SoundingOutDiurnal
 from soundade.hpc.cluster import AltairGridEngineCluster
 from soundade.data.solar import solartimes
 from soundade.hpc.arguments import DaskArgumentParser
 
-from pathlib import Path
+logging.basicConfig(level=logging.INFO)
 
-#TODO test parameter does nothing. Remove.
-
-def main_local(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=2, npartitions=20,
-         filename=True, timeparts=True, country_habitat=True, solar=True, compute=False,
-         test=False, **kwargs):
-    assert infile is not None
-    assert outfile is not None
-
-    # Read data
-    df = pd.read_parquet(infile)
-
-    cols_meta = list(df.columns[:3])
-    cols_data = list(df.columns[3:])
-
-    if filename:
-        df = SoundingOutDiurnal.filename_metadata(df, cols_data)
-
-    if timeparts:
-        df = SoundingOutDiurnal.timeparts(df)
-
-    if country_habitat:
-        df = SoundingOutDiurnal.country_habitat(df, use_meta=False)
-
-    if solar:
-        df = solartimes(df, locations=sitesfile)
-
-    df.to_parquet(outfile)
-
-
-def main(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=1, npartitions=None,
-         filename=True, timeparts=True, country_habitat=True, solar=True, compute=False,
-         test=False, local_cluster=True, **kwargs):
+def main(
+    infile=None,
+    outfile=None,
+    sitesfile=None,
+    memory=64,
+    cores=4,
+    jobs=1,
+    npartitions=None,
+    dataset=None,
+    filename=True,
+    timeparts=True,
+    country_habitat=True,
+    solar=True,
+    compute=False,
+    local_cluster=True,
+    **kwargs
+):
     """
     Process and append metadata to the input data.
 
@@ -52,12 +44,12 @@ def main(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=1, 
         cores (int): Number of CPU cores to use for the computation.
         jobs (int): Number of parallel jobs to run.
         npartitions (int): Number of partitions to repartition the data into.
+        dataset (str, optional): Name of the dataset to use. The name of a dataset class defined in soundade.datasets. Required.
         filename (bool): Flag indicating whether to append filename metadata to the data.
         timeparts (bool): Flag indicating whether to process time parts of the data.
         country_habitat (bool): Flag indicating whether to process country and habitat information of the data.
         solar (bool): Flag indicating whether to process solar information of the data.
         compute (bool): Flag indicating whether to compute and save the processed data. Used mainly for very small datasets and for testing purposes.
-        test (bool): Flag indicating whether to run the function in test mode.
         local_cluster (bool): Flag indicating whether to use a local cluster for computation.
 
     Returns:
@@ -74,49 +66,52 @@ def main(infile=None, outfile=None, sitesfile=None, memory=64, cores=4, jobs=1, 
 
     if local_cluster:
         memory_per_worker = f'{memory}GiB'
-
-        client = Client(n_workers=cores,
-                        threads_per_worker=1,
-                        memory_limit=memory_per_worker)
-
+        client = Client(
+            n_workers=cores,
+            threads_per_worker=1,
+            memory_limit=memory_per_worker
+        )
     else:
-        # Start cluster
-        cluster = AltairGridEngineCluster(cores=cores, memory=memory, queue='test.short', name=None)  # 'AppendMetadata')
+        cluster = AltairGridEngineCluster(
+            cores=cores,
+            memory=memory,
+            queue='test.short',
+            name=None
+        )
         print(cluster.job_script())
         client = Client(cluster)
         cluster.scale(jobs=jobs)
 
-    # Read data
-    df = dd.read_parquet(infile)
+    assert dataset in datasets, f"Unsupported dataset '{dataset}'"
+    ds: Dataset = datasets[dataset]
 
-    cols_meta = list(df.columns[:3])
-    cols_data = list(df.columns[3:])
-    
-    if filename:
-        df = SoundingOutDiurnal.filename_metadata(df, cols_data)
-
-    # TODO DawnDusk flag
-    
-    #TODO this might be causing problems.
-    if timeparts:
-        df = SoundingOutDiurnal.timeparts(df)
-
-    if country_habitat:
-        df = SoundingOutDiurnal.country_habitat(df)
-    
-    if solar:
-        df = SoundingOutDiurnal.solar(df, locations=sitesfile)
-    
     outfile = Path(outfile)
+    ddf = dd.read_parquet(infile)
+    ddf = ds.metadata(ddf)
+    ddf = ds.timeparts(ddf)
+    ddf = ds.solar(ddf, locations=sitesfile)
+
     if compute:
-        df.compute().to_parquet(outfile)
+        df = ddf.compute()
+        df.to_parquet(outfile)
     else:
-        dd.to_parquet(df, outfile, version='2.6', write_index=False, allow_truncated_timestamps=True)#, schema={'date': pa.date32(), 'time': pa.time64('ns')})
-        # dd.to_parquet(df, outfile, write_index=False)
+        dd.to_parquet(
+            ddf,
+            outfile,
+            version='2.6',
+            write_index=False,
+            allow_truncated_timestamps=True,
+        )
 
 if __name__ == '__main__':
     parser = DaskArgumentParser('Extract features from audio files', memory=128, cores=1, jobs=4, npartitions=None)
-    
+
+    parser.add_argument('--dataset', type=str, help='Which dataset to use')
+    parser.add_argument('--segment-duration', default=60.0, type=float, help='Duration for chunking audio segments (defaults to 60s). Specify -1 to use full clip.')
+    parser.add_argument('--frame', type=int, help='Number of audio frames for a feature frame.')
+    parser.add_argument('--hop', type=int, help='Number of audio frames for the hop.')
+    parser.add_argument('--n_fft', type=int, help='Number of audio frames for the n_fft.')
+
     parser.add_argument('--sitesfile', default=None, help='Parquet file containing site information.')
 
     filename = parser.add_mutually_exclusive_group()
@@ -126,7 +121,7 @@ if __name__ == '__main__':
     country_habitat = parser.add_mutually_exclusive_group()
     country_habitat.add_argument('-c', dest='country_habitat', default=True, action='store_true')
     country_habitat.add_argument('-C', dest='country_habitat', default=True, action='store_false')
-    
+
     solar = parser.add_mutually_exclusive_group()
     solar.add_argument('-s', dest='solar', default=True, action='store_true')
     solar.add_argument('-S', dest='solar', default=True, action='store_false')

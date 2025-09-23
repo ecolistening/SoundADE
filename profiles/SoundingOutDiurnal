@@ -1,4 +1,0 @@
-"--dataset=SoundingOutDiurnal"
-"--frame=16000"
-"--hop=4000"
-"--n_fft=1024"

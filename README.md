@@ -13,13 +13,7 @@ You must redo this every time you make changes to the source code. However `sett
 ### Singularity/apptainer
 Some HPC admins don't give users the sudo priveleges required to run docker. Therefore the project can be built using singularity/apptainer which doesn't require priveleges and is usually installed on HPC systems.
 
-Since singularity re-builds the entire image every time, the build process has been split into two parts. First, the conda environment (which rarely changes and is slow to build) is built as its own image:
-
-`apptainer build --ignore-fakeroot-command -F $HOME/SoundADE/soundade-environment.sif $HOME/SoundADE/soundade-environment.def`
-
-Then the pipeline specific code (which is more frequently modified) is built with the environment image as its base:
-
-`apptainer build --ignore-fakeroot-command -F $HOME/SoundADE/pipeline.sif $HOME/SoundADE/pipeline.def`
+`singularity build --ignore-fakeroot-command -F app.sif app.def`
 
 If using SLURM based HPC, scripts to schedule these builds can be found under the `slurm` directory.
 

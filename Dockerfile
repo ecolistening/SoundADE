@@ -1,20 +1,16 @@
-FROM continuumio/anaconda3:2023.03-1
+FROM python:3.10-slim-bookworm
 
-ENV CODE_PATH=/code
-ENV DATA_PATH=/data
-ENV PROFILE_PATH=$DATA_PATH/run-environment/profile
-ENV GIT_COMMIT="Docker doesn't know"
-WORKDIR /code
+RUN apt-get update
+RUN apt-get install --no-install-recommends -y curl git ffmpeg
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Create the environment:
-COPY environment.yml .
-RUN conda env create -f environment.yml
-COPY src/soundade/ /code/src/soundade/
-COPY pyproject.toml /code/pyproject.toml
-RUN conda run -n soundade python -m pip install /code
+ADD https://astral.sh/uv/0.7.8/install.sh /uv-installer.sh
+RUN sh /uv-installer.sh && rm /uv-installer.sh
+ENV PATH="/root/.local/bin:$PATH"
 
-# The code to run when container is started:
-COPY scripts/ /code/scripts/
-COPY pipeline-steps.sh /code/pipeline-steps.sh
+ADD . /app
+WORKDIR /app
+RUN uv sync --locked
 
-ENTRYPOINT ["bash", "/code/pipeline-steps.sh"]
+ENTRYPOINT []
+CMD ["uv", "run", "main.py", "pipeline"]

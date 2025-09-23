@@ -91,15 +91,6 @@ def acoustic_features(
     )
 
     log.info("Reshaping features dataframe to long form")
-    ddf = (
-        ddf.melt(
-            id_vars=ddf.columns[:ddf.columns.get_loc(Features[0].name)],
-            value_vars=ddf.columns[ddf.columns.get_loc(Features[0].name):],
-            var_name="feature",
-            value_name="value",
-        )
-        .dropna(subset="value")
-    )
 
     future: dd.Scalar = ddf.to_parquet(
         Path(outfile),

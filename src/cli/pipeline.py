@@ -70,7 +70,7 @@ def pipeline(
         dataset=dataset,
         compute=True,
     )
-    # index solar times
+    # index site-specific information
     log.info(f"Indexing solar times")
     index_solar(
         files_ddf=dd.from_pandas(files_df),
@@ -179,57 +179,54 @@ def get_base_parser():
     parser.add_argument(
         "--root-dir",
         type=lambda p: Path(p).expanduser(),
-        default=os.environ.get("DATA_PATH", "/data"),
-        help="Root directory containing audio files",
+        help="Root directory containing audio files. Defaults to /data for container builds.",
     )
     parser.add_argument(
         '--save-dir',
         type=lambda p: Path(p).expanduser(),
-        default=os.environ.get("DATA_PATH", "/data"),
-        help='Target directory for results',
+        help="Target directory for results. Defaults to /results for container builds.",
     )
     parser.add_argument(
         '--sitesfile',
         type=lambda p: Path(p).expanduser(),
-        help='Refencing a locations.parquet with site-level info (site_name/lat/lng/etc)',
+        help="Path to a parquet file with columns ('site_id', 'site_name',  'latitude',  'longitude',  'timezone')",
     )
     parser.add_argument(
         '--dataset',
         type=str,
-        default=os.environ.get("DATASET"),
         choices=datasets.keys(),
         help='Name of the dataset',
     )
     parser.add_argument(
         '--sample-rate',
         type=int,
-        help='Resample rate for audio'
+        help='Resample rate for audio',
     )
     parser.add_argument(
         '--segment-duration',
         type=float,
         default=60.0,
-        help='Duration for chunking audio segments (defaults to 60s). Specify -1 to use full clip.'
+        help='Duration for chunking audio segments. Defaults to 60s. Specify -1 to use full clip.',
     )
     parser.add_argument(
         '--frame',
         type=int,
-        help='Number of audio frames for a feature frame.'
+        help='Number of audio frames for a feature frame.',
     )
     parser.add_argument(
         '--hop',
         type=int,
-        help='Number of audio frames for the hop.'
+        help='Number of audio frames for the hop.',
     )
     parser.add_argument(
         '--n-fft',
         type=int,
-        help='Number of audio frames for the n_fft.'
+        help='Number of audio frames for the n_fft.',
     )
     parser.add_argument(
         "--min-conf",
         type=float,
-        help="BirdNET confidence threshold"
+        help="BirdNET confidence threshold. Defaults to 0.0 to collect all detections.",
     )
     parser.add_argument(
         "--threads-per-worker",
@@ -243,7 +240,9 @@ def get_base_parser():
         help="Sets single-threaded for debugging.",
     )
     parser.set_defaults(func=main, **{
-        "root_dir": os.environ.get("DATA_PATH", "/data"),
+        "root_dir": "/data",
+        "save_dir": "/results",
+        "dataset": os.environ.get("DATASET", None),
         "memory": os.environ.get("MEM_PER_CPU", 0),
         "cores": os.environ.get("CORES", 1),
         "threads_per_worker": os.environ.get("THREADS_PER_WORKER", 1),

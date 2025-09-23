@@ -171,7 +171,7 @@ def get_base_parser():
     parser.add_argument(
         '--sitesfile',
         type=lambda p: Path(p).expanduser(),
-        help="Path to a parquet file with columns 'site_id', 'site_name',  'latitude',  'longitude',  'timezone')",
+        help="Path to a parquet file with columns ('site_id', 'site_name',  'latitude',  'longitude',  'timezone')",
     )
     parser.add_argument(
         '--dataset',

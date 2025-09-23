@@ -36,7 +36,9 @@ def pipeline(
     frame: int,
     hop: int,
     n_fft: int,
-    min_conf: float,
+    high_pass_filter: bool = True,
+    dc_correction: bool = True,
+    min_conf: float = 0.0,
     partition_size: int = None,
     npartitions: int = None,
 ) -> Tuple[dd.DataFrame, dd.Scalar] | pd.DataFrame:
@@ -96,6 +98,8 @@ def pipeline(
         hop=hop,
         n_fft=n_fft,
         segment_duration=segment_duration,
+        high_pass_filter=high_pass_filter,
+        dc_correction=dc_correction,
         compute=False,
     )
     # extract birdnet species scores
@@ -125,6 +129,8 @@ def main(
     frame: int,
     hop: int,
     n_fft: int,
+    high_pass_filter: bool,
+    dc_offset: bool,
     min_conf: float,
     memory: int,
     cores: int,
@@ -222,6 +228,20 @@ def get_base_parser():
         '--n-fft',
         type=int,
         help='Number of audio frames for the n_fft.',
+    )
+    parser.add_argument(
+        "--high-pass-filter",
+        type=int,
+        default=True,
+        action="store_true",
+        help="Apply a high pass filter",
+    )
+    parser.add_argument(
+        "--dc-offset",
+        type=int,
+        default=True,
+        action="store_true",
+        help="Apply DC Correction",
     )
     parser.add_argument(
         "--min-conf",

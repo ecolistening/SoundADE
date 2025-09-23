@@ -60,6 +60,8 @@ def acoustic_features(
     frame: int = 0,
     hop: int = 0,
     n_fft: int = 0,
+    dc_correction: bool = True,
+    high_pass_filter: bool = True,
     npartitions: int = None,
     compute: bool = False,
     **kwargs: Any,
@@ -77,11 +79,14 @@ def acoustic_features(
 
     b = b.map(load_audio_from_path, root_dir=root_dir, sr=sample_rate)
 
-    log.info("Removing DC offset and applying highpass filter at 300Hz")
-    b = (
-        b.map(remove_dc_offset)
-        .map(high_pass_filter, fcut=300, forder=2, fname="butter", ftype="highpass")
-    )
+    if dc_correction:
+        log.info("Removing DC offset")
+        b = b.map(remove_dc_offset)
+
+    if high_pass_filter:
+        log.info("Applying highpass filter at 300Hz")
+        b = b.map(high_pass_filter, fcut=300, forder=2, fname="butter", ftype="highpass")
+
     log.info(f"Extracting acoustic features with FFT params {frame=} {hop=} {n_fft=}")
     ddf = (
         b.map(extract_scalar_features_from_audio, frame_length=frame, hop_length=hop, n_fft=n_fft)
@@ -224,6 +229,20 @@ def get_base_parser():
         "--sample-rate",
         type=int,
         help="Audio sample rate for the audio",
+    )
+    parser.add_argument(
+        "--high-pass-filter",
+        type=int,
+        default=True,
+        action="store_true",
+        help="Apply a high pass filter",
+    )
+    parser.add_argument(
+        "--dc-correction",
+        type=int,
+        default=True,
+        action="store_true",
+        help="Apply DC Correction",
     )
     parser.add_argument(
         '--compute',

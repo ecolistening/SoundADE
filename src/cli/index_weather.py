@@ -10,6 +10,7 @@ import time
 
 from pathlib import Path
 from retry_requests import retry
+from requests import Session
 from typing import Any, Dict, Tuple, List
 from urllib.error import HTTPError
 
@@ -20,10 +21,10 @@ OPEN_METEO_ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
 
 _client = None
 
-def init_client(**kwargs):
+def init_client(*args, **kwargs):
     global _client
     if _client is None:
-        _client = OpenMeteoClient(**kwargs)
+        _client = OpenMeteoClient(*args, **kwargs)
     return _client
 
 def OpenMeteoClient(
@@ -31,9 +32,8 @@ def OpenMeteoClient(
     expire_after: int = -1,
     backoff_factor: float = 0.2,
 ) -> openmeteo_requests.Client:
-    cache_session = requests_cache.CachedSession('.cache', expire_after=expire_after)
-    retry_session = retry(cache_session, retries=retries, backoff_factor=backoff_factor)
-    return openmeteo_requests.Client(session=retry_session)
+    session = retry(Session(), retries=retries, backoff_factor=backoff_factor)
+    return openmeteo_requests.Client(session=session)
 
 DEFAULT_WEATHER_COLUMNS = {
     "temperature_2m": "Temperature at 2m (°C)",
@@ -68,7 +68,6 @@ def find_weather_hourly(
         **WEATHER_COLUMNS
     }
     """
-    client = init_client()
     params = {
         "latitude": data_dict["latitude"],
         "longitude": data_dict["longitude"],
@@ -76,6 +75,8 @@ def find_weather_hourly(
         "end_date": data_dict["end_date"],
         "hourly": columns,
     }
+
+    client = init_client()
     try:
         responses = client.weather_api(OPEN_METEO_ARCHIVE_URL, params=params)
         hourly = responses[0].Hourly()
@@ -95,7 +96,11 @@ def find_weather_hourly(
         df["site_id"] = data_dict["site_id"]
         return df.to_dict(orient="records")
     except HTTPError as e:
-        log.warning("Failed to fetch weather data from OpenMeteo")
+        log.warning("Request to OpenMeteo failed, are you connected to the internet?")
+        log.error(e)
+        return []
+    except Exception as e:
+        log.warning("Failed to fetch weather data")
         log.error(e)
         return []
 

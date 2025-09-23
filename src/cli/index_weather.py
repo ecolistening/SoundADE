@@ -1,18 +1,17 @@
-import os
 import argparse
 import datetime as dt
-import numpy as np
-import pandas as pd
-import pyarrow as pa
-import time
 import itertools
 import logging
 import openmeteo_requests
+import os
+import pandas as pd
 import requests_cache
+import time
 
 from pathlib import Path
-from typing import Any, Dict, Tuple, List
 from retry_requests import retry
+from typing import Any, Dict, Tuple, List
+from urllib.error import HTTPError
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -49,35 +48,56 @@ DEFAULT_WEATHER_COLUMNS = {
 }
 
 def find_weather_hourly(
-    d: Dict[str, Any],
+    data_dict: Dict[str, Any],
     columns: List[str] = DEFAULT_WEATHER_COLUMNS.keys(),
 ) -> Dict[str, Any]:
+    """
+    Requires: dictionary of the form:
+    {
+        site_id: str | int,
+        latitude: float,
+        longitude: float,
+        start_date: datetime64[us],
+        end_date: datetime64[us],
+    }
+
+    Returns: a list of dictionaries of the form:
+    {
+        site_id: str | int,
+        timestamp: datetime64[us],
+        **WEATHER_COLUMNS
+    }
+    """
     client = init_client()
     params = {
-        "latitude": d["latitude"],
-        "longitude": d["longitude"],
-        "start_date": d["start_date"],
-        "end_date": d["end_date"],
+        "latitude": data_dict["latitude"],
+        "longitude": data_dict["longitude"],
+        "start_date": data_dict["start_date"],
+        "end_date": data_dict["end_date"],
         "hourly": columns,
     }
-    # Probably need to try/catch?
-    responses = client.weather_api(OPEN_METEO_ARCHIVE_URL, params=params)
-    hourly = responses[0].Hourly()
-    data = {
-        column: hourly.Variables(i).ValuesAsNumpy()
-        for i, column in enumerate(columns)
-    }
-    df = pd.DataFrame({
-        "timestamp": pd.date_range(
-            pd.to_datetime(hourly.Time(), unit="s"),
-            pd.to_datetime(hourly.TimeEnd(), unit="s"),
-            freq=pd.Timedelta(seconds=hourly.Interval()),
-            inclusive="left",
-        ),
-        **data,
-    })
-    df["site_id"] = d["site_id"]
-    return df.to_dict(orient="records")
+    try:
+        responses = client.weather_api(OPEN_METEO_ARCHIVE_URL, params=params)
+        hourly = responses[0].Hourly()
+        data = {
+            column: hourly.Variables(i).ValuesAsNumpy()
+            for i, column in enumerate(columns)
+        }
+        df = pd.DataFrame({
+            "timestamp": pd.date_range(
+                pd.to_datetime(hourly.Time(), unit="s"),
+                pd.to_datetime(hourly.TimeEnd(), unit="s"),
+                freq=pd.Timedelta(seconds=hourly.Interval()),
+                inclusive="left",
+            ),
+            **data,
+        })
+        df["site_id"] = data_dict["site_id"]
+        return df.to_dict(orient="records")
+    except HTTPError as e:
+        log.warning("Failed to fetch weather data from OpenMeteo")
+        log.error(e)
+        return []
 
 def index_weather(
     files_df: pd.DataFrame,
@@ -85,13 +105,12 @@ def index_weather(
     save_dir: Path,
     **kwargs: Any,
 ) -> None:
-    start_time = time.time()
     log.info("Fetching weather data from open meteo")
     df = (
         files_df[["site_id", "timestamp"]]
         .groupby("site_id")
         .agg(start_date=("timestamp", lambda x: x.dt.date.min()), end_date=("timestamp", lambda x: x.dt.date.max()))
-        .join(sites_df[["latitude", "longitude", "site_name"]], how="left")
+        .merge(sites_df[["site_id", "latitude", "longitude"]], on="site_id", how="left")
         .reset_index()
     )
     weather_df = pd.DataFrame(list(itertools.chain(*list(map(find_weather_hourly, df.to_dict(orient="records"))))))
@@ -105,12 +124,15 @@ def main(
     save_dir: Path | None,
     **kwargs: Any,
 ) -> None:
+    start_time = time.time()
     index_weather(
         files_df=pd.read_parquet(files_path),
         sites_df=pd.read_parquet(sites_path),
         save_dir=save_dir or files_path.parent,
         **kwargs,
     )
+    log.info(f"Weather index complete")
+    log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")
 
 def get_base_parser():
     parser = argparse.ArgumentParser(

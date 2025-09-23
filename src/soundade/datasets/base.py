@@ -1,4 +1,3 @@
-import abc
 import datetime as dt
 import logging
 import pandas as pd
@@ -12,8 +11,8 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 @dataclass
-class Dataset(abc.ABC):
-    def index_sites(self, root_dir: str | Path, sites_file: str | Path) -> pd.DataFrame:
+class Dataset:
+    def index_sites(self, root_dir: Path, sites_file: Path) -> pd.DataFrame:
         assert sites_file.exists(), \
             f"{self.__class__.__name__} locations is not extracted but provided as a separate file at {sites_file}"
         return pd.read_parquet(sites_file)

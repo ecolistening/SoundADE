@@ -11,7 +11,7 @@ from cli import index_audio
 from cli import index_solar
 from cli import index_weather
 from cli import acoustic_features
-from cli import birdnet_species
+from cli import birdnet_detections
 from cli import pipeline
 
 logging.basicConfig(level=logging.INFO)
@@ -23,16 +23,16 @@ def main():
     )
     subparsers = parser.add_subparsers(dest="command")
 
-    pipeline_steps = [
+    commands = [
         index_sites,
         index_audio,
         index_solar,
         index_weather,
         acoustic_features,
-        birdnet_species,
+        birdnet_detections,
         pipeline,
     ]
-    for module in pipeline_steps:
+    for module in commands:
         module.register_subparser(subparsers)
 
     args = parser.parse_args()

@@ -1,8 +1,8 @@
-import os
 import argparse
-import time
 import logging
+import os
 import pandas as pd
+import time
 
 from dask import bag as db
 from dask import dataframe as dd
@@ -17,10 +17,6 @@ from soundade.datasets import datasets
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
-
-cfg.set({
-    "distributed.scheduler.worker-ttl": None
-})
 
 def index_sites(
     root_dir: str | Path,
@@ -62,7 +58,8 @@ def main(
         dataset=dataset,
     )
 
-    log.info(f"Time taken for sites index: {time.time() - start_time}")
+    log.info(f"Site index complete")
+    log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")
 
 def get_base_parser():
     parser = argparse.ArgumentParser(

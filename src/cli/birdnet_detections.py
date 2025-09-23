@@ -1,10 +1,10 @@
-import os
 import argparse
+import dask
 import datetime as dt
-import time
-import pathlib
 import logging
+import os
 import pandas as pd
+import time
 
 from dask import config as cfg
 from dask import bag as db
@@ -13,17 +13,13 @@ from dask.distributed import Client
 from pathlib import Path
 from typing import Any, Tuple
 
-from soundade.audio.birdnet import species_probs, species_probs_meta, species_probs_as_df
+from soundade.audio.birdnet import species_probs, species_probs_meta
 from soundade.hpc.arguments import DaskArgumentParser
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
-cfg.set({
-    "distributed.scheduler.worker-ttl": None
-})
-
-def birdnet_species(
+def birdnet_detections(
     root_dir: Path,
     files_df: pd.DataFrame,
     sites_df: pd.DataFrame,
@@ -32,18 +28,21 @@ def birdnet_species(
     npartitions: int = None,
     compute: bool = False,
 ) -> Tuple[dd.DataFrame, dd.Scalar] | pd.DataFrame:
-    log.info(f"Setting up BirdNET species probabilities extraction pipeline.")
+    log.info(f"Setting up BirdNET species detection extraction pipeline.")
     log.info("Corrupt files will be filtered.")
 
     files_df = files_df[files_df.valid]
-    files_df["local_file_path"] = root_dir / files_df["file_path"]
-    columns = ["file_id", "local_file_path", "timestamp", "site_id", "valid"]
+    files_df["local_file_path"] = root_dir / files_df["file_path"].astype(str)
+    columns = ["file_id", "local_file_path", "timestamp", "site_id"]
 
-    records = files_df[columns].join(sites_df[["latitude", "longitude"]], on="site_id").to_dict(orient="records")
+    records = files_df[columns].merge(
+        sites_df[["site_id", "latitude", "longitude"]],
+        on="site_id"
+    ).to_dict(orient="records")
     b = db.from_sequence(records, npartitions=npartitions)
 
     log.info(f"Partitions after load: {b.npartitions}")
-    log.info(f"Extracting species probabilities with params {min_conf=} for {len(files_df)} files.")
+    log.info(f"Extracting detection probabilities with params {min_conf=} for {len(files_df)} files")
 
     ddf = (
         b.map(species_probs, min_conf=min_conf)
@@ -54,13 +53,12 @@ def birdnet_species(
 
     future = ddf.to_parquet(
         Path(outfile),
-        version='2.6',
         allow_truncated_timestamps=True,
         write_index=False,
         compute=False
     )
 
-    log.info(f"BirdNET processing queued, will persist to {outfile}")
+    log.info(f"Queued BirdNET detections, will persist to {outfile}")
 
     if compute:
         dask.compute(future)
@@ -130,7 +128,7 @@ def main(
 
     start_time = time.time()
 
-    birdnet_species(
+    birdnet_detections(
         root_dir,
         pd.read_parquet(infile),
         pd.read_parquet(sitesfile),
@@ -140,6 +138,7 @@ def main(
         compute=compute,
     )
 
+    log.info(f"BirdNET detection extraction complete")
     log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")
 
 def get_base_parser():
@@ -186,7 +185,7 @@ def get_base_parser():
     parser.set_defaults(func=main, **{
         "root_dir": os.environ.get("DATA_PATH", "/data"),
         "infile": "/".join([os.environ.get("DATA_PATH", "/data"), "files_table.parquet"]),
-        "outfile": "/".join([os.environ.get("DATA_PATH", "/data"), "birdnet_species_probs_table.parquet"]),
+        "outfile": "/".join([os.environ.get("DATA_PATH", "/data"), "birdnet_detections_probs_table.parquet"]),
         "sitesfile": "/".join([os.environ.get("DATA_PATH", "/data"), "locations_table.parquet"]),
         "min_conf": os.environ.get("MIN_CONF", 0.0),
         "memory": os.environ.get("MEM_PER_CPU", 0),
@@ -198,8 +197,8 @@ def get_base_parser():
 
 def register_subparser(subparsers):
     parser = subparsers.add_parser(
-        "birdnet_species",
-        help="Extract species probabilities using BirdNET",
+        "birdnet_detections",
+        help="Extract species detection probabilities using BirdNET",
         parents=[get_base_parser()],
         add_help=True,
     )

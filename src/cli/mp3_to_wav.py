@@ -1,9 +1,10 @@
 import argparse
-import os
 import logging
+import os
 import subprocess
-from pathlib import Path
+
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)

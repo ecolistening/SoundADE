@@ -1,13 +1,14 @@
-import os
 import argparse
+import dask
+import datetime as dt
 import itertools
-import time
 import logging
+import os
 import pandas as pd
+import time
 
 from dask import bag as db
 from dask import dataframe as dd
-from dask import config as cfg
 from dask.distributed import Client
 from pathlib import Path
 from typing import Any, Tuple
@@ -17,10 +18,6 @@ from soundade.datasets import datasets
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
-
-cfg.set({
-    "distributed.scheduler.worker-ttl": None
-})
 
 def file_meta():
     return pd.DataFrame({
@@ -39,16 +36,20 @@ def file_meta():
 def index_audio(
     root_dir: str | Path,
     out_file: str | Path,
-    sites_ddf: pd.DataFrame | dd.DataFrame,
+    sites_ddf: pd.DataFrame | dd.DataFrame | None,
     dataset: str,
     partition_size: int = None,
     npartitions: int = None,
     compute: bool = True,
 ) -> Tuple[dd.DataFrame, dd.Scalar] | pd.DataFrame:
     assert dataset in datasets, f"Unsupported dataset '{dataset}'"
-    dataset: Dataset = datasets[dataset]()
+
+    if sites_ddf is not None:
+        assert "site_id" in sites_ddf.columns, f"'site_id' key must be available in the sites table"
+        assert "site_name" in sites_ddf.columns, f"'site_name' must be available in the sites table and should align with site directory structure"
 
     root_dir = Path(root_dir).expanduser()
+    dataset: Dataset = datasets[dataset]()
 
     log.info("Recursively discovering audio files...")
 
@@ -75,32 +76,29 @@ def index_audio(
         .to_dataframe(meta=file_meta())
     )
 
-    # attach site_id as reference
+    # attach site_id as foreign key
     if sites_ddf is not None:
-        sites_ddf = sites_ddf.reset_index()[["site_name", "site_id"]]
         files_ddf = (
             files_ddf
-            .merge(sites_ddf, on="site_name", how="left")
+            .merge(sites_ddf[["site_name", "site_id"]], on="site_name", how="left")
             .drop("site_name", axis=1)
             .astype({"site_id": "string[pyarrow]"})
         )
 
-    # compute immediately
-    if compute:
-        files_df = files_ddf.compute()
-        files_df.to_parquet(Path(out_file), index=False)
-        log.info(f"File index saved to {out_file}")
-        return files_df
-
     future = files_ddf.to_parquet(
         Path(out_file),
-        version='2.6',
         allow_truncated_timestamps=True,
         write_index=False,
         compute=False,
     )
 
     log.info(f"Indexing files queued, will persist to {out_file}")
+
+    # compute immediately
+    if compute:
+        files_df = dask.compute(future)
+        log.info(f"File index saved to {out_file}")
+        return pd.read_parquet(Path(out_file)), None
 
     return ddf, future
 
@@ -121,7 +119,7 @@ def main(
 
     Args:
         root_dir (str, required): Input directory containing audio files.
-        outfile (str, required): Output file path.
+        out-file (str, required): Output file path.
         sitesfile (str, optional): Sites file stores a foreign key for a sites table,
                                    where the join key is extracted from the dataset's path.
                                    Required for secondary pipeline steps: birdnet and solar.
@@ -153,7 +151,7 @@ def main(
     )
 
     log.info(f"File index complete")
-    log.info(f"Time taken: {time.time() - start_time}")
+    log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")
 
 def get_base_parser():
     parser = argparse.ArgumentParser(
@@ -173,7 +171,7 @@ def get_base_parser():
     parser.add_argument(
         '--sitesfile',
         type=lambda p: Path(p).expanduser(),
-        help='Refencing a locations.parquet with site-level info (site_name/lat/lng/etc)',
+        help="Path to a parquet file with columns 'site_id', 'site_name',  'latitude',  'longitude',  'timezone')",
     )
     parser.add_argument(
         '--dataset',

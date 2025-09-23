@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - /mnt/echodata/nature_sense/Nature_Sense/Raw_Data:/data
+      - ${DATA_PATH}:/data
     env_file:
       - .env
     tty: true

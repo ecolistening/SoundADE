@@ -1,11 +1,11 @@
-import os
 import dask
 import datetime as dt
-import time
+import itertools
 import logging
 import numpy as np
+import os
 import pandas as pd
-import itertools
+import time
 
 from dask import config as cfg
 from dask import bag as db
@@ -18,16 +18,10 @@ from soundade.hpc.arguments import DaskArgumentParser
 from soundade.hpc.cluster import clusters
 from soundade.audio.feature.scalar import Features
 from soundade.data.bag import (
-    file_path_to_audio_dict,
-    valid_audio_file,
     create_file_load_dictionary,
     load_audio_from_path,
-    write_wav,
-    reformat_for_dataframe,
-    power_spectra_from_audio,
     log_features,
     transform_features,
-    extract_banded_audio,
     remove_dc_offset,
     high_pass_filter,
     extract_scalar_features_from_audio,
@@ -35,10 +29,6 @@ from soundade.data.bag import (
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
-
-cfg.set({
-    "distributed.scheduler.worker-ttl": None
-})
 
 def acoustic_features_meta():
     return pd.DataFrame({
@@ -65,7 +55,7 @@ def acoustic_features(
     root_dir: Path,
     files_df: pd.DataFrame,
     outfile: Path,
-    segment_duration: float = 60.0,
+    segment_duration: float,
     sample_rate: int | None = None,
     frame: int = 0,
     hop: int = 0,
@@ -78,7 +68,7 @@ def acoustic_features(
     log.info("Corrupt files will be filtered.")
 
     b = db.from_sequence(itertools.chain.from_iterable((
-        create_file_load_dictionary(audio_dict, seconds=segment_duration)
+        create_file_load_dictionary(audio_dict, root_dir=root_dir, seconds=segment_duration, sr=sample_rate)
         for audio_dict in files_df[files_df["valid"]].to_dict(orient="records")
     )), npartitions=npartitions)
 
@@ -113,13 +103,12 @@ def acoustic_features(
 
     future: dd.Scalar = ddf.to_parquet(
         Path(outfile),
-        version='2.6',
         allow_truncated_timestamps=True,
         write_index=False,
         compute=False,
     )
 
-    log.info(f"Acoustic features extraction queued. Will persist to {outfile}")
+    log.info(f"Queued acoustic feature extraction. Will persist to {outfile}")
 
     if compute:
         dask.compute(future)
@@ -222,6 +211,7 @@ def get_base_parser():
     parser.add_argument(
         '--segment-duration',
         type=float,
+        default=60.0,
         help='Duration for chunking audio segments (defaults to 60s). Specify -1 to use full clip.'
     )
     parser.add_argument(
@@ -272,7 +262,7 @@ def get_base_parser():
         "frame": os.environ.get("FRAME", 2_048),
         "hop": os.environ.get("HOP", 512),
         'n_fft': os.environ.get("N_FFT", 2_048),
-        "sample_rate": os.environ.get("SAMPLE_RATE", 48_000),
+        "sample_rate": os.environ.get("SAMPLE_RATE", None),
     })
     return parser
 

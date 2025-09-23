@@ -6,7 +6,6 @@ import soundfile
 
 from birdnetlib import Recording
 from birdnetlib.analyzer import Analyzer
-from birdnetlib.analyzer import Analyzer
 
 from typing import (
     Any,
@@ -20,7 +19,7 @@ from typing import (
 from soundade.utils import suppress_output
 
 __all__ = [
-    "embeddings",
+    "embed",
     "species_probs",
 ]
 
@@ -63,8 +62,6 @@ def embed_meta():
         },
     })
 
-# TODO: can we drop these two wrapper methods,
-# instead return dictionaries and use dask bags with a flatten operation?
 @suppress_output()
 def species_probs(
     audio_dict: pd.Series,
@@ -100,66 +97,16 @@ def species_probs(
     )
     # extract predictions
     recording.analyze()
-    # return empty dict if no detections were made
-    if not len(recording.detections):
-        return {}
+
     detections = []
-    for detection_dict in recording.detections:
-        d = detection_dict.copy()
-        d["file_id"] = audio_dict["file_id"]
-        d["min_conf"] = min_conf
-        d["model"] = f"BirdNET_GLOBAL_6K_V{analyzer.version}"
-        detections.append(d)
+    if len(recording.detections):
+        for detection_dict in recording.detections:
+            d = detection_dict.copy()
+            d["file_id"] = audio_dict["file_id"]
+            d["min_conf"] = min_conf
+            d["model"] = f"BirdNET_GLOBAL_6K_V{analyzer.version}"
+            detections.append(d)
     return detections
-
-def species_probs_as_df(
-    df: pd.DataFrame,
-    min_conf: float,
-    **kwargs: Any,
-) -> pd.DataFrame:
-    return pd.concat([
-        _species_probs_as_df(metadata, min_conf=min_conf, **kwargs)
-        for i, metadata in df.iterrows()
-    ], axis=0)
-
-@suppress_output()
-def _species_probs_as_df(
-    audio_dict: pd.Series,
-    min_conf: float,
-    **kwargs: Any,
-) -> pd.DataFrame:
-    # lazy load analyzer on worker process (cached globally)
-    analyzer = _fetch_analyzer()
-    # build response schema for dask
-    schema = species_probs_meta()
-    # init birdnetlib with all relevant parameters
-    # TODO: add support for known species lists
-    recording = Recording(
-        analyzer,
-        audio_dict.get("local_file_path"),
-        lat=audio_dict.get("latitude"),
-        lon=audio_dict.get("longitude"),
-        date=ts.date() if pd.notnull(ts := audio_dict.get("timestamp")) else None,
-        min_conf=min_conf,
-        **kwargs,
-    )
-    # extract predictions
-    recording.analyze()
-    # return response schema if no detections were made
-    if not len(recording.detections):
-        return schema
-    # each detection is of the form:
-    # {
-    #   common_name: string, scientific_name: string, label: string,
-    #   start_time: float64, end_time: float64, confidence: float64,
-    # }
-    df = pd.DataFrame(recording.detections)
-    # stack with important metadata
-    df["file_id"] = audio_dict["file_id"]
-    df["min_conf"] = min_conf
-    df["model"] = f"BirdNET_GLOBAL_6K_V{analyzer.version}"
-    # reorder columns to match expected output schema
-    return df[schema.columns]
 
 @suppress_output()
 def embed(
@@ -192,75 +139,15 @@ def embed(
     )
     # extract embeddings
     recording.extract_embeddings()
-    return [
-        {
+    embeddings = []
+    for embedding_info in recording.embeddings:
+        embedding_dict = {
             "file_id": audio_dict["file_id"],
             "model": f"BirdNET_GLOBAL_6K_V{analyzer.version}",
-            # concatenate timestep information, all other fields not in the embeddings info
-            **{
-                k: v
-                for k, v in embedding_info.items()
-                if k != "embeddings"
-            },
+            # concatenate timestep information, i.e. all other fields not in the embeddings info
+            **{k: v for k, v in embedding_info.items() if k != "embeddings"},
             # embedding dimension column as string integers
-            **{
-                str(dim): value
-                for dim, value in enumerate(embedding_info["embeddings"])
-            }
+            **{str(dim): value for dim, value in enumerate(embedding_info["embeddings"])}
         }
-        for embedding_info in recording.embeddings
-    ]
-
-def embed_as_df(
-    df: pd.DataFrame,
-    **kwargs: Any,
-) -> pd.DataFrame:
-    return pd.concat([
-        _embed_as_df(metadata, **kwargs)
-        for i, metadata in df.iterrows()
-    ], axis=0)
-
-@suppress_output()
-def _embed_as_df(
-    audio_dict: pd.Series,
-    **kwargs: Any,
-) -> pd.DataFrame:
-    # lazy load analyzer on worker process (cached globally)
-    analyzer = _fetch_analyzer()
-    # build response schema for dask
-    schema = embed_meta()
-    # init birdnetlib with all relevant parameters
-    recording = Recording(
-        analyzer,
-        audio_dict.get("local_file_path"),
-        lat=audio_dict.get("latitude"),
-        lon=audio_dict.get("longitude"),
-        date=ts.date() if pd.notnull(ts := audio_dict.get("timestamp")) else None,
-        **kwargs,
-    )
-    # extract embeddings
-    recording.extract_embeddings()
-    # stack into a dataframe indexed for each 3s audio segment
-    df = pd.DataFrame([
-        pd.concat([
-            # embedding dimension column as string integers
-            pd.Series({
-                str(dim): value
-                for dim, value in enumerate(embedding_info["embeddings"])
-            }),
-            # concatenate timestep information, all other fields not in the embeddings info
-            pd.Series({
-                k: v
-                for k, v in embedding_info.items()
-                if k != "embeddings"
-            }),
-        ])
-        # each 3s response is returned as a dictionary
-        # { start_time: float64, end_time: float64, embeddings: List[float64] }
-        for embedding_info in recording.embeddings
-    ])
-    # stack with important metadata
-    df["file_id"] = audio_dict["file_id"]
-    df["model"] = f"BirdNET_GLOBAL_6K_V{analyzer.version}"
-    # reorder columns to match expected output schema
-    return df[schema.columns]
+        embeddings.append(embedding_dict)
+    return embeddings

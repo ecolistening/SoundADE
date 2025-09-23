@@ -1,8 +1,8 @@
-import os
-import datetime as dt
 import argparse
 import dask
+import datetime as dt
 import logging
+import os
 import pandas as pd
 import time
 
@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Any, Tuple
 
 from soundade.hpc.arguments import DaskArgumentParser
-from soundade.data.bag import file_path_to_audio_dict
 from soundade.datasets import datasets
 
 from cli.index_sites import index_sites
@@ -22,14 +21,10 @@ from cli.index_audio import index_audio
 from cli.index_solar import index_solar
 from cli.index_weather import index_weather
 from cli.acoustic_features import acoustic_features
-from cli.birdnet_species import birdnet_species
+from cli.birdnet_detections import birdnet_detections
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
-
-cfg.set({
-    "distributed.scheduler.worker-ttl": None
-})
 
 def pipeline(
     root_dir: str | Path,
@@ -68,7 +63,7 @@ def pipeline(
     )
     # index files
     log.info(f"Indexing audio files")
-    files_df = index_audio(
+    files_df, _ = index_audio(
         root_dir=root_dir,
         out_file=files_path,
         sites_ddf=dd.from_pandas(sites_df),
@@ -77,7 +72,7 @@ def pipeline(
     )
     # index solar times
     log.info(f"Indexing solar times")
-    files_df, _ = index_solar(
+    index_solar(
         files_ddf=dd.from_pandas(files_df),
         sites_ddf=dd.from_pandas(sites_df),
         infile=files_path,
@@ -93,6 +88,7 @@ def pipeline(
     # extract acoustic featres
     log.info(f"Extracting acoustic features")
     acoustic_features_ddf, acoustic_features_future = acoustic_features(
+        root_dir=root_dir,
         files_df=files_df,
         outfile=recording_acoustic_features_path,
         sample_rate=sample_rate,
@@ -104,7 +100,8 @@ def pipeline(
     )
     # extract birdnet species scores
     log.info(f"Extracting BirdNET species probabilities")
-    birdnet_species_ddf, birdnet_species_future = birdnet_species(
+    birdnet_species_ddf, birdnet_species_future = birdnet_detections(
+        root_dir=root_dir,
         files_df=files_df,
         sites_df=sites_df,
         outfile=birdnet_species_probs_path,
@@ -113,10 +110,7 @@ def pipeline(
     )
     # compute the graph
     log.info(f"Processing...")
-    dask.compute(
-        acoustic_features_future,
-        birdnet_species_future,
-    )
+    dask.compute(acoustic_features_future, birdnet_species_future)
     # and we're done!
     log.info("Pipeline complete")
     log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")
@@ -214,6 +208,7 @@ def get_base_parser():
     parser.add_argument(
         '--segment-duration',
         type=float,
+        default=60.0,
         help='Duration for chunking audio segments (defaults to 60s). Specify -1 to use full clip.'
     )
     parser.add_argument(

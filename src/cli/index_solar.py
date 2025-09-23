@@ -1,9 +1,9 @@
-import os
+import argparse
+import dask
 import datetime as dt
 import logging
-import numpy as np
+import os
 import pandas as pd
-import pyarrow as pa
 import time
 
 from dask import config as cfg
@@ -26,10 +26,6 @@ from soundade.hpc.cluster import clusters
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
-cfg.set({
-    "distributed.scheduler.worker-ttl": None
-})
-
 def index_solar(
     files_ddf: dd.DataFrame,
     sites_ddf: dd.DataFrame,
@@ -38,7 +34,7 @@ def index_solar(
     partition_size: int = None,
     npartitions: int = None,
     compute: bool = True,
-) -> Tuple[dd.DataFrame, dd.DataFrame, dd.Scalar] | Tuple[pd.DataFrame, pd.DataFrame]:
+) -> Tuple[dd.DataFrame | pd.DataFrame, dd.DataFrame | pd.DataFrame, dd.Scalar | None, dd.Scalar | None]:
     # extract date information and drop timestamp
     log.info("Extracting date from timestamp")
     files_ddf = (
@@ -54,19 +50,20 @@ def index_solar(
         files_ddf[["site_id", "date"]]
         # drop duplicates at a site on a date
         .drop_duplicates(subset=["site_id", "date"], keep="last")
-        # join location information on site_id for all solar info
-        .join(sites_ddf[site_columns], on="site_id", how="left")
+        # dropping duplicates across potentially many partitions requires a reshuffle
         .persist()
     )
-    b = (
+    solar_ddf = (
         ddf
+        # join location information on site_id for all solar info
+        .merge(sites_ddf[["site_id", *site_columns]], on="site_id", how="left")
         # map to a bag since the operation is not vectorised
         .to_bag(format="dict")
-    )
-    b = b.map(find_sun)
-    # store in a dataframe
-    solar_ddf = (
-        b.to_dataframe()
+        # extract solar information
+        .map(find_sun)
+        # map to dataframe
+        .to_dataframe()
+        # extract solar boundaries
         .map_partitions(find_solar_boundaries)
         .astype({"site_id": "string[pyarrow]"})
     )
@@ -87,16 +84,8 @@ def index_solar(
         .drop(solar_columns, axis=1)
         .drop(site_columns, axis=1)
     )
+    # remove site columns from solar table
     solar_ddf = solar_ddf.drop(site_columns, axis=1)
-
-    if compute:
-        solar_df = solar_ddf.compute()
-        solar_df.to_parquet(Path(outfile), index=False)
-        files_df = files_ddf.compute()
-        files_df.to_parquet(Path(infile), index=False)
-        log.info(f"Solar index saved to {outfile}")
-        log.info(f"File index updated at {infile}")
-        return files_df, solar_df
 
     files_future = files_ddf.to_parquet(
         Path(infile),
@@ -115,6 +104,10 @@ def index_solar(
 
     log.info(f"Solar queued, will persist to {outfile}")
     log.info(f"Indexing files queued, will overwrite {infile}")
+
+    if compute:
+        dask.compute(files_future, solar_future)
+        return pd.read_parquet(Path(infile)), pd.read_parquet(Path(outfile)), None, None
 
     return files_ddf, solar_ddf, files_future, solar_future
 
@@ -185,7 +178,7 @@ def main(
     )
 
     log.info(f"Solar index complete")
-    log.info(f"Time taken: {time.time() - start_time}")
+    log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")
 
 def get_base_parser():
     parser = DaskArgumentParser(

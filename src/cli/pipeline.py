@@ -45,8 +45,8 @@ def pipeline(
     # ensure dataset class for parsing relevant information has been setup
     assert dataset in datasets, f"Unsupported dataset '{dataset}'"
     # setup data sinks
-    save_dir.mkdir(exist_ok=True, parents=True)
     save_dir = save_dir.expanduser()
+    save_dir.mkdir(exist_ok=True, parents=True)
     sites_path = sitesfile or save_dir / "locations_table.parquet"
     files_path = save_dir / "files_table.parquet"
     solar_path = save_dir / "solar_table.parquet"

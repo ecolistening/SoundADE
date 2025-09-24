@@ -328,7 +328,7 @@ def get_base_parser():
         "hop": os.environ.get("HOP", 512),
         'n_fft': os.environ.get("N_FFT", 2_048),
         "sample_rate": os.environ.get("SAMPLE_RATE", None),
-        "dc_offset": os.environ.get("DC_CORR", 1),
+        "dc_correction": os.environ.get("DC_CORR", 1),
         "high_pass_filter": os.environ.get("HIGH_PASS_FILTER", 1),
     })
     return parser

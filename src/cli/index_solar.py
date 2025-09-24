@@ -23,6 +23,8 @@ from soundade.data.solar import (
 from soundade.hpc.arguments import DaskArgumentParser
 from soundade.hpc.cluster import clusters
 
+PYARROW_VERSION = "2.6"
+
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
@@ -89,14 +91,14 @@ def index_solar(
 
     files_future = files_ddf.to_parquet(
         Path(infile),
-        version='2.6',
+        version=PYARROW_VERSION,
         allow_truncated_timestamps=True,
         write_index=False,
         compute=False,
     )
     solar_future = solar_ddf.to_parquet(
         Path(outfile),
-        version='2.6',
+        version=PYARROW_VERSION,
         allow_truncated_timestamps=True,
         write_index=False,
         compute=False,

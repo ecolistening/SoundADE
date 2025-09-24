@@ -182,7 +182,7 @@ def get_base_parser():
     )
     parser.set_defaults(func=main, **{
         "root_dir": "/data",
-        "infile": "/data/files_table.parquet",
+        "infile": "/results/files_table.parquet",
         "outfile": "/results/birdnet_embeddings_table.parquet",
         "sitesfile": "/results/locations_table.parquet",
         "memory": os.environ.get("MEM_PER_CPU", 0),

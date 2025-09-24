@@ -186,10 +186,10 @@ def get_base_parser():
         help="Threads per worker",
     )
     parser.set_defaults(func=main, **{
-        "root_dir": os.environ.get("DATA_PATH", "/data"),
-        "infile": "/".join([os.environ.get("SAVE_PATH", "/data"), "files_table.parquet"]),
-        "outfile": "/".join([os.environ.get("SAVE_PATH", "/data"), "birdnet_detections_probs_table.parquet"]),
-        "sitesfile": "/".join([os.environ.get("SAVE_PATH", "/data"), "locations_table.parquet"]),
+        "root_dir": "/data",
+        "infile": "/results/files_table.parquet",
+        "outfile": "/results/birdnet_species_probs_table.parquet",
+        "sitesfile": "/results/locations_table.parquet",
         "min_conf": os.environ.get("MIN_CONF", 0.0),
         "memory": os.environ.get("MEM_PER_CPU", 0),
         "cores": os.environ.get("CORES", 1),

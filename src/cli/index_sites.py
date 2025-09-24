@@ -83,8 +83,8 @@ def get_base_parser():
         help='Name of the dataset',
     )
     parser.set_defaults(func=main, **{
-        "root_dir": os.environ.get("DATA_PATH", "/data"),
-        "out_file": "/".join([os.environ.get("DATA_PATH", "/data"), "locations_table.parquet"]),
+        "root_dir": "/data",
+        "out_file": "/results/locations_table.parquet",
         "dataset": os.environ.get("DATASET"),
     })
     return parser

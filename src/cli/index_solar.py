@@ -217,9 +217,9 @@ def get_base_parser():
         help="Threads per worker",
     )
     parser.set_defaults(func=main, **{
-        "infile": "/".join([os.environ.get("DATA_PATH", "/data"), "files_table.parquet"]),
-        "outfile": "/".join([os.environ.get("DATA_PATH", "/data"), "solar_table.parquet"]),
-        "sitesfile": "/".join([os.environ.get("DATA_PATH", "/data"), "locations_table.parquet"]),
+        "infile": "/data/files_table.parquet",
+        "outfile": "/results/solar_table.parquet",
+        "sitesfile": "/results/locations_table.parquet",
         "memory": os.environ.get("MEM_PER_CPU", 0),
         "cores": os.environ.get("CORES", 1),
         "local": True,

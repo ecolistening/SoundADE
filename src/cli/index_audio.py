@@ -212,9 +212,9 @@ def get_base_parser():
         help="Sets single-threaded for debugging.",
     )
     parser.set_defaults(func=main, **{
-        "root_dir": os.environ.get("DATA_PATH", "/data"),
-        "out_file": "/".join([os.environ.get("DATA_PATH", "/data"), "files_table.parquet"]),
-        "sitesfile": "/".join([os.environ.get("DATA_PATH", "/data"), "locations_table.parquet"]),
+        "root_dir": "/data",
+        "out_file": "/results/files_table.parquet",
+        "sitesfile": "/results/locations_table.parquet",
         "dataset": os.environ.get("DATASET", None),
         "memory": os.environ.get("MEM_PER_CPU", 0),
         "cores": os.environ.get("CORES", 1),

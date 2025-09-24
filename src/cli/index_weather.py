@@ -163,9 +163,9 @@ def get_base_parser():
         help="/path/to/save/dir"
     )
     parser.set_defaults(func=main, **{
-        "files_path": "/".join([os.environ.get("DATA_PATH", "/data"), "files_table.parquet"]),
-        "sites_path": "/".join([os.environ.get("DATA_PATH", "/data"), "locations_table.parquet"]),
-        "save_dir": os.environ.get("DATA_PATH", "/data"),
+        "files_path": "/results/files_table.parquet",
+        "sites_path": "/results/locations_table.parquet",
+        "save_dir": "/results",
     })
     return parser
 

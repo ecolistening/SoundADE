@@ -316,7 +316,7 @@ def get_base_parser():
         help='Execute the program immediately'
     )
     parser.set_defaults(func=main, **{
-        "infile": "/data/files_table.parquet",
+        "infile": "/results/files_table.parquet",
         "outfile": "/results/recording_acoustic_features_table.parquet",
         'local': os.environ.get("LOCAL", True),
         "memory": os.environ.get("MEM_PER_CPU", 0),

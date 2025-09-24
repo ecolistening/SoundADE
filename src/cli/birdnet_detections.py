@@ -187,9 +187,9 @@ def get_base_parser():
     )
     parser.set_defaults(func=main, **{
         "root_dir": os.environ.get("DATA_PATH", "/data"),
-        "infile": "/".join([os.environ.get("DATA_PATH", "/data"), "files_table.parquet"]),
-        "outfile": "/".join([os.environ.get("DATA_PATH", "/data"), "birdnet_detections_probs_table.parquet"]),
-        "sitesfile": "/".join([os.environ.get("DATA_PATH", "/data"), "locations_table.parquet"]),
+        "infile": "/".join([os.environ.get("SAVE_PATH", "/data"), "files_table.parquet"]),
+        "outfile": "/".join([os.environ.get("SAVE_PATH", "/data"), "birdnet_detections_probs_table.parquet"]),
+        "sitesfile": "/".join([os.environ.get("SAVE_PATH", "/data"), "locations_table.parquet"]),
         "min_conf": os.environ.get("MIN_CONF", 0.0),
         "memory": os.environ.get("MEM_PER_CPU", 0),
         "cores": os.environ.get("CORES", 1),

@@ -65,8 +65,8 @@ def acoustic_features(
     n_fft: int,
     dc_correction: bool,
     high_pass_filter: bool,
-    npartitions: int,
-    compute: bool,
+    npartitions: int = None,
+    compute: bool = False,
     **kwargs: Any,
 ) -> Tuple[dd.DataFrame, dd.Scalar | None] | pd.DataFrame:
     log.info("Setting up acoustic feature extraction pipeline.")

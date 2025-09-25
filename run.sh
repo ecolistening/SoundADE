@@ -46,7 +46,7 @@ elif [[ $DO_SLURM = true  ]] ; then
 elif [[ $DO_LOCAL = true  ]] ; then
   echo "Running in local anaconda environment"
   uv venv .venv
-  source .venv.bin/activate
+  source .venv/bin/activate
   uv sync --locked
   uv run main.py pipeline --root-dir=$DATA_PATH \
                           --save-dir=$SAVE_PATH \

@@ -36,9 +36,9 @@ def pipeline(
     frame: int,
     hop: int,
     n_fft: int,
-    high_pass_filter: int = 0,
-    dc_correction: int = 0,
-    min_conf: float = 0.0,
+    high_pass_filter: int,
+    dc_correction: int,
+    min_conf: float,
     partition_size: int = None,
     npartitions: int = None,
     **kwargs: Any,
@@ -248,7 +248,7 @@ def get_base_parser():
         "hop": os.environ.get("HOP", 512),
         'n_fft': os.environ.get("N_FFT", 2_048),
         "dc_correction": os.environ.get("DC_CORR", 0),
-        "high_pass_filter": os.environ.get("HIGH_PASS_FILTER", 0),
+        "high_pass_filter": os.environ.get("HIGH_PASS_FILTER", 1),
 
         "min_conf": os.environ.get("MIN_CONF", 0.0),
     })

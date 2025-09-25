@@ -63,8 +63,8 @@ def acoustic_features(
     frame: int,
     hop: int,
     n_fft: int,
-    dc_correction: bool = 0,
-    high_pass_filter: bool = 0,
+    dc_correction: int,
+    high_pass_filter: int,
     npartitions: int = None,
     compute: bool = False,
     **kwargs: Any,
@@ -325,7 +325,7 @@ def get_base_parser():
         "hop": os.environ.get("HOP", 512),
         'n_fft': os.environ.get("N_FFT", 2_048),
         "dc_correction": os.environ.get("DC_CORR", 0),
-        "high_pass_filter": os.environ.get("HIGH_PASS_FILTER", 0),
+        "high_pass_filter": os.environ.get("HIGH_PASS_FILTER", 1),
     })
     return parser
 

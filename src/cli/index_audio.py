@@ -43,6 +43,7 @@ def index_audio(
     partition_size: int = None,
     npartitions: int = None,
     compute: bool = True,
+    **kwargs: Any,
 ) -> Tuple[dd.DataFrame, dd.Scalar] | pd.DataFrame:
     assert dataset in datasets, f"Unsupported dataset '{dataset}'"
 
@@ -108,15 +109,14 @@ def index_audio(
     return ddf, future
 
 def main(
-    root_dir: str | Path,
-    out_file: str | Path,
     sitesfile: str | Path | None,
-    dataset: str = None,
-    memory: int = 4,
-    cores: int = 1,
-    threads_per_worker: int = 1,
-    compute: bool = True,
-    debug: bool = False,
+    memory: int,
+    cores: int,
+    jobs: int,
+    queue: str,
+    local: bool,
+    threads_per_worker: int,
+    debug: bool,
     **kwargs: Any,
 ) -> None:
     """
@@ -149,10 +149,8 @@ def main(
     start_time = time.time()
 
     index_audio(
-        root_dir=root_dir,
-        out_file=out_file,
-        dataset=dataset,
         sites_ddf=dd.read_parquet(sitesfile),
+        **kwargs,
     )
 
     log.info(f"File index complete")

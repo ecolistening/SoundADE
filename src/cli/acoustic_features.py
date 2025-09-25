@@ -63,8 +63,8 @@ def acoustic_features(
     frame: int,
     hop: int,
     n_fft: int,
-    dc_correction: bool,
-    high_pass_filter: bool,
+    dc_correction: bool = 0,
+    high_pass_filter: bool = 0,
     npartitions: int = None,
     compute: bool = False,
     **kwargs: Any,
@@ -119,9 +119,7 @@ def acoustic_features(
     return ddf, future
 
 def main(
-    root_dir: Path,
     infile: Path,
-    outfile: Path,
     cluster: str | None,
     memory: int,
     cores: int,
@@ -188,9 +186,7 @@ def main(
     start_time = time.time()
 
     acoustic_features(
-        root_dir=root_dir,
         files_df=pd.read_parquet(infile),
-        outfile=outfile,
         **kwargs,
     )
 
@@ -294,13 +290,11 @@ def get_base_parser():
     parser.add_argument(
         "--dc-correction",
         type=int,
-        default=1,
-        help="Apply DC Correction",
+        help="Apply DC Correction by subtracting the mean",
     )
     parser.add_argument(
         "--high-pass-filter",
         type=int,
-        default=1,
         help="Apply a high pass filter",
     )
     parser.add_argument(
@@ -319,17 +313,19 @@ def get_base_parser():
         "root_dir": "/data",
         "infile": "/results/files_table.parquet",
         "outfile": "/results/recording_acoustic_features_table.parquet",
+
         'local': os.environ.get("LOCAL", True),
         "memory": os.environ.get("MEM_PER_CPU", 0),
         "cores": os.environ.get("CORES", 0),
         "threads_per_worker": os.environ.get("THREADS_PER_WORKER", 1),
+
+        "sample_rate": os.environ.get("SAMPLE_RATE", 48_000),
         "segment_duration": os.environ.get("SEGMENT_LEN", 60.0),
         "frame": os.environ.get("FRAME", 2_048),
         "hop": os.environ.get("HOP", 512),
         'n_fft': os.environ.get("N_FFT", 2_048),
-        "sample_rate": os.environ.get("SAMPLE_RATE", None),
-        "dc_correction": os.environ.get("DC_CORR", 1),
-        "high_pass_filter": os.environ.get("HIGH_PASS_FILTER", 1),
+        "dc_correction": os.environ.get("DC_CORR", 0),
+        "high_pass_filter": os.environ.get("HIGH_PASS_FILTER", 0),
     })
     return parser
 

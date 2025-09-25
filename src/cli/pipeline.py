@@ -36,11 +36,12 @@ def pipeline(
     frame: int,
     hop: int,
     n_fft: int,
-    high_pass_filter: bool = True,
-    dc_correction: bool = True,
+    high_pass_filter: int = 0,
+    dc_correction: int = 0,
     min_conf: float = 0.0,
     partition_size: int = None,
     npartitions: int = None,
+    **kwargs: Any,
 ) -> Tuple[dd.DataFrame, dd.Scalar] | pd.DataFrame:
     # ensure dataset class for parsing relevant information has been setup
     assert dataset in datasets, f"Unsupported dataset '{dataset}'"
@@ -120,25 +121,13 @@ def pipeline(
     log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")
 
 def main(
-    root_dir: str | Path,
-    save_dir: str | Path,
-    sitesfile: str | Path | None,
-    dataset: str,
-    sample_rate: int,
-    segment_duration: float,
-    frame: int,
-    hop: int,
-    n_fft: int,
-    high_pass_filter: bool,
-    dc_offset: bool,
-    min_conf: float,
+    cluster: str | None,
     memory: int,
     cores: int,
     jobs: int,
     queue: str,
-    threads_per_worker: int,
-    npartitions: int | None,
     local: bool,
+    threads_per_worker: int,
     debug: bool,
     **kwargs: Any,
 ) -> None:
@@ -163,19 +152,7 @@ def main(
         )
         log.info(client)
 
-    pipeline(
-        root_dir=root_dir,
-        save_dir=save_dir,
-        sitesfile=sitesfile,
-        dataset=dataset,
-        sample_rate=sample_rate,
-        segment_duration=segment_duration,
-        frame=frame,
-        hop=hop,
-        n_fft=n_fft,
-        min_conf=min_conf,
-        npartitions=npartitions,
-    )
+    pipeline(**kwargs)
 
 def get_base_parser():
     parser = DaskArgumentParser(
@@ -230,16 +207,14 @@ def get_base_parser():
         help='Number of audio frames for the n_fft.',
     )
     parser.add_argument(
-        "--high-pass-filter",
-        default=True,
-        action="store_true",
-        help="Apply a high pass filter",
+        "--dc-correction",
+        type=int,
+        help="Set to 1 to apply DC Correction by subtracting the mean",
     )
     parser.add_argument(
-        "--dc-offset",
-        default=True,
-        action="store_true",
-        help="Apply DC Correction",
+        "--high-pass-filter",
+        type=int,
+        help="Set to 1 to apply a high pass filter",
     )
     parser.add_argument(
         "--min-conf",
@@ -261,14 +236,20 @@ def get_base_parser():
         "root_dir": "/data",
         "save_dir": "/results",
         "dataset": os.environ.get("DATASET", None),
+
+        'local': os.environ.get("LOCAL", True),
         "memory": os.environ.get("MEM_PER_CPU", 0),
-        "cores": os.environ.get("CORES", 1),
+        "cores": os.environ.get("CORES", 0),
         "threads_per_worker": os.environ.get("THREADS_PER_WORKER", 1),
+
         "sample_rate": os.environ.get("SAMPLE_RATE", 48_000),
         "segment_duration": os.environ.get("SEGMENT_LEN", 60.0),
         "frame": os.environ.get("FRAME", 2_048),
         "hop": os.environ.get("HOP", 512),
         'n_fft': os.environ.get("N_FFT", 2_048),
+        "dc_correction": os.environ.get("DC_CORR", 0),
+        "high_pass_filter": os.environ.get("HIGH_PASS_FILTER", 0),
+
         "min_conf": os.environ.get("MIN_CONF", 0.0),
     })
     return parser

@@ -88,3 +88,12 @@ dependencies = [
     "zict==3.0.0",
     "zipp==3.23.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["src/test"]

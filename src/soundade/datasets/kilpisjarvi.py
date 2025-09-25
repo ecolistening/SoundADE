@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 class Kilpisjarvi(Dataset):
     PATTERN = (
         "(?P<site_level_1>[^/_]+)(?:_\d+)?/"
-        "Data/"
+        "(?:Data/)?"
         "(?P<recorder>SMA\d{5})_"
         "(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})_"
         "(?P<hour>\d{2})(?P<minute>\d{2})(?P<second>\d{2})"

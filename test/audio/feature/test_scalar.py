@@ -91,7 +91,7 @@ def test_bioacoustic_index(
     metric = "bioacoustic_index"
     fn = getattr(scalar, metric)
     expected = expected_acoustic_features[metric].to_frame()
-    results = [fn(y=wav, **audio_params) for wav in wavs]
+    results = [fn(y=wav, **audio_params, R_compatible=True) for wav in wavs]
     actual = pd.DataFrame(data=results, columns=[metric], index=file_names).sort_index().astype(np.float32)
     pd.testing.assert_frame_equal(expected, actual, atol=1e-1, rtol=1e-3)
 

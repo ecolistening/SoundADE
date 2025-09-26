@@ -1,3 +1,0 @@
-window: hanning
-window_length: 1024
-sample_rate: 48_000

@@ -1,0 +1,6 @@
+window: hann
+frame_length: 1024
+n_fft: 1024
+hop_length: 1024
+sr: 48000
+flim: [300, 24000]

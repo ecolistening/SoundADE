@@ -2,6 +2,7 @@ from itertools import chain
 
 import librosa
 import maad
+import maad.sound
 import numpy as np
 import pandas as pd
 from findiff import FinDiff

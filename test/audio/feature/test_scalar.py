@@ -20,28 +20,6 @@ def extract_features():
     pathlib.Path("test/fixtures/indices.parquet").unlink()
 
 @pytest.fixture(scope="session")
-def fixtures_path() -> pathlib.Path:
-    return pathlib.Path(os.path.dirname(__file__)).parent.parent / "fixtures"
-
-@pytest.fixture(scope="session")
-def audio_params(fixtures_path) -> Dict[str, Any]:
-    with open(fixtures_path / "audio_params.yml", "r") as f:
-        params = {}
-        for k, v in yaml.safe_load(f.read()).items():
-            if type(v) == list:
-                v = tuple(v)
-            params[k] = v
-        return params
-
-@pytest.fixture(scope="session")
-def file_paths(fixtures_path) -> List[pathlib.Path]:
-    return list((fixtures_path / "audio").glob("*.wav"))
-
-@pytest.fixture(scope="session")
-def file_names(file_paths) -> List[str]:
-    return [p.name for p in file_paths]
-
-@pytest.fixture(scope="session")
 def wavs(file_paths, audio_params) -> List[NDArray]:
     return [librosa.load(file_path, sr=audio_params["sr"])[0] for file_path in file_paths]
 
@@ -153,7 +131,12 @@ def test_spectral_entropy(
     audio_params: Dict[str, Any],
     expected_acoustic_features: List[pd.DataFrame]
 ) -> None:
-    pass
+    metric = "spectral_entropy"
+    fn = getattr(scalar, metric)
+    expected = expected_acoustic_features[metric].to_frame()
+    results = [fn(y=wav, **audio_params) for wav in wavs]
+    actual = pd.DataFrame(data=results, columns=[metric], index=file_names).sort_index().astype(np.float32)
+    pd.testing.assert_frame_equal(expected, actual, atol=1e-3, rtol=1e-3)
 
 def test_temporal_entropy(
     file_names: List[str],
@@ -161,4 +144,9 @@ def test_temporal_entropy(
     audio_params: Dict[str, Any],
     expected_acoustic_features: List[pd.DataFrame]
 ) -> None:
-    pass
+    metric = "temporal_entropy"
+    fn = getattr(scalar, metric)
+    expected = expected_acoustic_features[metric].to_frame()
+    results = [fn(y=wav, **audio_params) for wav in wavs]
+    actual = pd.DataFrame(data=results, columns=[metric], index=file_names).sort_index().astype(np.float32)
+    pd.testing.assert_frame_equal(expected, actual, atol=1e-3, rtol=1e-3)

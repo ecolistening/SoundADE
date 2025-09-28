@@ -30,13 +30,13 @@ results_path <- file.path(fixtures_path, "results")
 
 params <- yaml::read_yaml(file.path(fixtures_path, "audio_params.yml"))
 
-n_fft <- params$n_fft
+window_length <- params$n_fft
 hop <- params$hop_length
 window <- params$window
 sr <- params$sr
 flim <- params$flim
 # calculate the overlap in %
-ovlp = ((n_fft - hop) / n_fft) * 100
+ovlp = ((window_length - hop) / window_length) * 100
 
 # for testing, we re-use the params file
 # but seewave uses "hanning" instead of "hann" as the window argument
@@ -54,31 +54,46 @@ files <- list.files(audio_path, pattern = "\\.wav$", full.names = TRUE)
 # compute using seewave
 wavs = lapply(files, readWave)
 
+shs = sapply(wavs, function(wav) {
+    S <- spectro(wav, sr, channel = 1, wl = window_length, ovlp = ovlp, wn = window_mapping(window), dB = NULL)
+    S_pow = S$amp ** 2
+    sh(S_pow, alpha = "shannon")
+})
+
+ths = sapply(wavs, function(wav) {
+    # env_hilbert <- env(wav, sr, envt = "hil")
+    # th(env_hilbert, breaks = 30)
+    Nt <- window_length
+    env_fast <- sapply(seq(1, length(wav@left), by = Nt), function(i) {
+        max(abs(wav@left[i:min(i+Nt-1, length(wav@left))]))
+    })
+    env_fast <- env_fast / sum(env_fast)
+    th(env_fast, breaks = 30)
+})
+
 rmss = sapply(wavs, function(wav) {
     samples <- wav@left
-    mean(rms(samples, wl = n_fft))
+    mean(rms(samples, wl = window_length))
 })
 
 scs = sapply(wavs, function(wav) {
-    S <- spectro(wav, sr, channel = 1, wl = n_fft, ovlp = ovlp, wn = window_mapping(window), dB = NULL)
-
+    S <- spectro(wav, sr, channel = 1, wl = window_length, ovlp = ovlp, wn = window_mapping(window), dB = NULL)
     centroids <- apply(S$amp, 2, function(t) {
        specprop(cbind(S$freq, t), sr)$cent
     })
-
     mean(centroids, na.rm = TRUE)
 })
 
 acis = sapply(wavs, function(wav) {
-    ACI(wav, sr, channel = 1, wl = n_fft, ovlp = ovlp, wn = window_mapping(window), nbwindows = 1)
+    ACI(wav, sr, channel = 1, wl = window_length, ovlp = ovlp, wn = window_mapping(window), nbwindows = 1)
 })
 
 sfs = sapply(wavs, function(wav) {
-    mean(specflux(wav, sr, channel = 1, wl = n_fft, ovlp = ovlp, wn = window_mapping(window), norm = TRUE, p = 2)[,2])
+    mean(specflux(wav, sr, channel = 1, wl = window_length, ovlp = ovlp, wn = window_mapping(window), norm = TRUE, p = 2)[,2])
 })
 
 zcrs = sapply(wavs, function(wav) {
-    mean(zcr(wav, channel = 1, sr, wl = n_fft, ovlp = ovlp)[,2])
+    mean(zcr(wav, channel = 1, sr, wl = window_length, ovlp = ovlp)[,2])
 })
 
 df <- data.frame(
@@ -88,13 +103,15 @@ df <- data.frame(
    zero_crossing_rate = zcrs,
    spectral_flux = sfs,
    root_mean_square = rmss,
+   temporal_entropy = ths,
+   spectral_entropy = shs,
    stringsAsFactors = FALSE
 )
 
 # compute using soundecology
 ais_params <- list(
   acoustic_evenness = list(max_freq = sr / 2, db_threshold = -50, freq_step = 500),
-  bioacoustic_index = list(min_freq = flim[[1]], max_freq = sr / 2, fft_w = n_fft)
+  bioacoustic_index = list(min_freq = flim[[1]], max_freq = sr / 2, fft_w = window_length)
 )
 
 for (acoustic_index in names(ais_params)) {

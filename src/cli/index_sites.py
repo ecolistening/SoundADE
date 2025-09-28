@@ -20,11 +20,11 @@ log = logging.getLogger(__name__)
 
 def index_sites(
     root_dir: str | Path,
+    config_path: Path,
     out_file: str | Path,
-    dataset: str = None,
-) -> Tuple[dd.DataFrame, dd.Scalar] | pd.DataFrame:
-    assert dataset in datasets, f"Unsupported dataset '{dataset}'"
-    dataset: Dataset = datasets[dataset]()
+    **kwargs: Any,
+) -> pd.DataFrame:
+    dataset = Dataset.from_config_path(config_path)
 
     df = dataset.index_sites(root_dir, out_file)
 
@@ -33,12 +33,7 @@ def index_sites(
 
     return df
 
-def main(
-    root_dir: str | Path,
-    out_file: str | Path,
-    dataset: str = None,
-    **kwargs: Any,
-) -> dd.DataFrame | None:
+def main(**kwargs: Any) -> None:
     """
     Build sites table extract location information from the audio directory
 
@@ -52,11 +47,7 @@ def main(
     """
     start_time = time.time()
 
-    index_sites(
-        root_dir=root_dir,
-        out_file=out_file,
-        dataset=dataset,
-    )
+    index_sites(**kwargs)
 
     log.info(f"Site index complete")
     log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")
@@ -72,20 +63,19 @@ def get_base_parser():
         help="Root directory containing (1) a locations.parquet file and (2) audio files (nested folder structure permitted)",
     )
     parser.add_argument(
+        '--config-path',
+        type=lambda p: Path(p).expanduser(),
+        help='/path/to/dataset/config.yaml',
+    )
+    parser.add_argument(
         '--out-file',
         type=lambda p: Path(p).expanduser(),
         help='Parquet file to save results.',
     )
-    parser.add_argument(
-        '--dataset',
-        type=str,
-        choices=datasets.keys(),
-        help='Name of the dataset',
-    )
     parser.set_defaults(func=main, **{
         "root_dir": "/data",
+        "config_path": "/config.yml",
         "out_file": "/results/locations_table.parquet",
-        "dataset": os.environ.get("DATASET"),
     })
     return parser
 

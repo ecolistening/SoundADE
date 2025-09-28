@@ -8,12 +8,8 @@ pattern: >
   (?P<hour>\d{2})(?P<minute>\d{2})(?P<second>\d{2})
   \.[wav|flac|mp3]
 sample_rate: 32_000
-frame: 1_536
-hop: 384
+frame_length: 1_536
+hop_length: 384
 n_fft: 1_536
 min_conf: 0.0
 segment_duration: 60.0
-n_neighbours: 15
-min_dist: 0.1
-metric: euclidean
-n_components: 2

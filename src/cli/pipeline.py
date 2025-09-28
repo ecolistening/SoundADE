@@ -27,24 +27,17 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 def pipeline(
-    root_dir: str | Path,
-    save_dir: str | Path,
-    sitesfile: str | Path | None,
-    dataset: str,
-    sample_rate: int,
-    segment_duration: float,
-    frame: int,
-    hop: int,
-    n_fft: int,
+    root_dir: Path,
+    config_path: Path,
+    save_dir: Path,
+    sitesfile: Path | None,
     high_pass_filter: int,
     dc_correction: int,
-    min_conf: float,
     partition_size: int = None,
     npartitions: int = None,
     **kwargs: Any,
 ) -> Tuple[dd.DataFrame, dd.Scalar] | pd.DataFrame:
-    # ensure dataset class for parsing relevant information has been setup
-    assert dataset in datasets, f"Unsupported dataset '{dataset}'"
+    root_dir = Path(root_dir).expanduser()
     # setup data sinks
     save_dir = save_dir.expanduser()
     save_dir.mkdir(exist_ok=True, parents=True)
@@ -61,6 +54,7 @@ def pipeline(
     log.info(f"Processing site information")
     sites_df = index_sites(
         root_dir=root_dir,
+        config_path=config_path,
         out_file=sites_path,
         dataset=dataset,
     )
@@ -68,6 +62,7 @@ def pipeline(
     log.info(f"Indexing audio files")
     files_df, _ = index_audio(
         root_dir=root_dir,
+        config_path=config_path,
         out_file=files_path,
         sites_ddf=dd.from_pandas(sites_df),
         dataset=dataset,
@@ -92,13 +87,9 @@ def pipeline(
     log.info(f"Extracting acoustic features")
     acoustic_features_ddf, acoustic_features_future = acoustic_features(
         root_dir=root_dir,
+        config_path=config_path,
         files_df=files_df,
         outfile=recording_acoustic_features_path,
-        sample_rate=sample_rate,
-        frame=frame,
-        hop=hop,
-        n_fft=n_fft,
-        segment_duration=segment_duration,
         high_pass_filter=high_pass_filter,
         dc_correction=dc_correction,
         compute=False,
@@ -107,6 +98,7 @@ def pipeline(
     log.info(f"Extracting BirdNET species probabilities")
     birdnet_species_ddf, birdnet_species_future = birdnet_detections(
         root_dir=root_dir,
+        config_path=config_path,
         files_df=files_df,
         sites_df=sites_df,
         outfile=birdnet_species_probs_path,
@@ -163,6 +155,11 @@ def get_base_parser():
         "--root-dir",
         type=lambda p: Path(p).expanduser(),
         help="Root directory containing audio files. Defaults to /data for container builds.",
+    )
+    parser.add_argument(
+        '--config-path',
+        type=lambda p: Path(p).expanduser(),
+        help='/path/to/dataset/config.yaml',
     )
     parser.add_argument(
         '--save-dir',

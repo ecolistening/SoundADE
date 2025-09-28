@@ -12,7 +12,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Iterable, Callable, Tuple
 
-from soundade.audio.feature.scalar import Features as ScalarFeatures
+from soundade.audio.feature.scalar import Features as ScalarFeatures, spectrogram
 from soundade.audio.feature.vector import Features, do_spectrogram
 from soundade.audio.filter import dc_offset
 
@@ -175,11 +175,13 @@ def extract_vector_features_from_audio(
     data_dict = copy_except_audio(audio_dict)
     # Remove the raw audio, which we don't want anymore
     audio = audio_dict.pop('audio')
-    spectrogram = do_spectrogram(
+    S = spectrogram(
         audio,
-        frame_length=frame_length,
-        hop_length=hop_length
+        audio_dict.get("sr"),
+        n_fft=n_fft,
+        hop_length=hop_length,
     )
+    flim = (300, audio_dict.get("sr") // 2)
     # Update
     data_dict.update({
         'frame_length': frame_length,
@@ -192,12 +194,13 @@ def extract_vector_features_from_audio(
     for feature in Features:
         data_dict[feature.name] = feature.compute(
             audio,
+            sr=audio_dict.get('sr'),
+            S=S,
             frame_length=frame_length,
             hop_length=hop_length,
             n_fft=n_fft,
-            sr=audio_dict.get('sr'),
-            spectrograms=spectrogram,
-            **kwargs
+            flim=flim,
+            **kwargs,
         ).flatten().tolist()
         data_dict['feature_length'] = max(len(data_dict[feature.name]), data_dict['feature_length'])
     return data_dict
@@ -223,20 +226,30 @@ def extract_scalar_features_from_audio(
     # Make sure to copy ALL data from the data dict
     data_dict = copy_except_audio(audio_dict)
     # Remove the raw audio, which we don't want anymore
-    audio = audio_dict.get('audio')
-    # Update
+    audio = audio_dict.get("audio")
+    S = spectrogram(
+        audio,
+        audio_dict.get("sr"),
+        n_fft=n_fft,
+        hop_length=hop_length,
+    )
     data_dict.update({
-        'frame_length': frame_length,
-        'hop_length': hop_length,
-        'n_fft': n_fft,
-        'feature_length': 0,
+        "frame_length": frame_length,
+        "hop_length": hop_length,
+        "n_fft": n_fft,
     })
     if lim_from_dict:
-        kwargs = kwargs | {'flim', (data_dict['low'], data_dict['high'])}
+        kwargs = kwargs | {"flim", (data_dict["low"], data_dict["high"])}
     for feature in ScalarFeatures:
-        comp = feature.compute(audio, frame_length=frame_length, hop_length=hop_length, n_fft=n_fft,
-                               sr=audio_dict.get('sr'), **kwargs)
-        data_dict[feature.name] = comp
+        data_dict[feature.name] = feature.compute(
+            audio,
+            sr=audio_dict.get("sr"),
+            S=S,
+            frame_length=frame_length,
+            hop_length=hop_length,
+            n_fft=n_fft,
+            **kwargs,
+        )
     return data_dict
 
 def log_features(features_dict: Dict, features: Iterable = [], epsilon: float = 1e-8):

@@ -10,4 +10,5 @@
 singularity run --env-file .env \
                 --bind $DATA_PATH:/data \
                 --bind $SAVE_PATH:/results \
+                --bind $CONFIG_PATH:/config.yml \
                 app.sif

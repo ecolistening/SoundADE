@@ -32,6 +32,7 @@ if [[ $DO_SINGULARITY = true  ]] ; then
   singularity run --env-file .env \
                   --bind $DATA_PATH:/data \
                   --bind $SAVE_PATH:/results \
+                  --bind $CONFIG_PATH:/config.yml \
                   app.sif
 
 elif [[ $DO_DOCKER = true  ]] ; then
@@ -49,16 +50,10 @@ elif [[ $DO_LOCAL = true  ]] ; then
   source .venv/bin/activate
   uv sync --locked
   uv run main.py pipeline --root-dir=$DATA_PATH \
+                          --config-path=$CONFIG_PATH \
                           --save-dir=$SAVE_PATH \
-                          --dataset=$DATASET \
-                          --sample-rate=$SAMPLE_RATE \
-                          --frame=$FRAME \
-                          --hop=$HOP \
-                          --n-fft=$N_FFT \
                           --cores=$CORES \
                           --memory=$MEM_PER_CPU \
-                          --min-conf=$MIN_CONF \
-                          --segment-duration=$SEGMENT_LEN \
                           --dc-correction=$DC_CORR \
                           --high-pass-filter=$HIGH_PASS_FILTER
 

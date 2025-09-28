@@ -12,6 +12,36 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class Dataset:
+    name: str
+    pattern: str
+    sample_rate: int
+    frame_length: int
+    hop_length: int
+    n_fft: int
+    min_conf: float
+    segment_duration: float
+
+    @classmethod
+    def from_config_path(cls, config_path: Path) -> "Dataset":
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f.read())
+        return cls(**config)
+
+    @property
+    def audio_params(self):
+        return {
+            "sr": self.sample_rate,
+            "n_fft": self.n_fft,
+            "hop_length": self.hop_length,
+            "frame_length": self.frame_length,
+        }
+
+    @property
+    def birdnet_params(self):
+        return {
+            "min_conf": self.min_conf,
+        }
+
     def index_sites(self, root_dir: Path, sites_file: Path) -> pd.DataFrame:
         assert sites_file.exists(), \
             f"{self.__class__.__name__} locations is not extracted but provided as a separate file at {sites_file}"
@@ -23,8 +53,11 @@ class Dataset:
         if match is None:
             log.warning(f"Failed to extract site name on {file_path}")
             return audio_dict
-        site_name = self._extract_site_hierarchy(match)
-        audio_dict.update({"site_name": site_name})
+        site_name, site_levels = self._extract_site_hierarchy(match)
+        audio_dict.update({
+            "site_name": site_name,
+            **{f"sitelevel_{i + 1}": level for i, level in enumerate(site_levels)}
+        })
         return audio_dict
 
     def extract_timestamp(self, audio_dict: Dict[str, Any]) -> Dict[str, Any]:
@@ -47,7 +80,7 @@ class Dataset:
             try: site_levels.append(match.group(f"site_level_{level}"))
             except: break
             level += 1
-        return "/".join(site_levels)
+        return "/".join(site_levels), site_levels
 
     def _get_match(self, file_path):
-        return re.search(self.PATTERN, file_path, flags=re.IGNORECASE)
+        return re.search(self.pattern, file_path, flags=re.IGNORECASE)

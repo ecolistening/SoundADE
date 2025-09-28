@@ -12,7 +12,3 @@ hop: 256
 n_fft: 1_024
 min_conf: 0.0
 segment_duration: 60.0
-n_neighbours: 15
-min_dist: 0.1
-metric: euclidean
-n_components: 2

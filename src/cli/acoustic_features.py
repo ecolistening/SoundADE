@@ -56,19 +56,18 @@ def acoustic_features_meta():
 
 def acoustic_features(
     root_dir: Path,
+    config_path: Path,
     files_df: pd.DataFrame,
     outfile: Path,
-    segment_duration: float,
-    sample_rate: int | None,
-    frame: int,
-    hop: int,
-    n_fft: int,
     dc_correction: int,
     high_pass_filter: int,
     npartitions: int = None,
     compute: bool = False,
     **kwargs: Any,
 ) -> Tuple[dd.DataFrame, dd.Scalar | None] | pd.DataFrame:
+    root_dir = Path(root_dir).expanduser()
+    dataset = Dataset.from_config_path(config_path)
+
     log.info("Setting up acoustic feature extraction pipeline.")
     log.info("Corrupt files will be filtered.")
 
@@ -76,10 +75,10 @@ def acoustic_features(
     b = db.from_sequence(audio_dicts, npartitions=npartitions)
 
     log.info(f"Partitions after load: {b.npartitions}")
-    log.info(f"Loading audio at {sample_rate}Hz in segments of duration {segment_duration}s")
+    log.info(f"Loading audio at {sample_rate}Hz in segments of duration {dataaset.segment_duration}s")
 
     b = (
-        b.map(create_file_load_dictionary, root_dir=root_dir, seconds=segment_duration, sr=sample_rate)
+        b.map(create_file_load_dictionary, root_dir=root_dir, seconds=dataset.segment_duration, sr=dataset.sample_rate)
         .flatten()
         .map(load_audio_from_path, root_dir=root_dir, sr=sample_rate)
     )
@@ -92,9 +91,10 @@ def acoustic_features(
         log.info("Applying highpass filter at 300Hz")
         b = b.map(apply_high_pass_filter, fcut=300, forder=2, fname="butter", ftype="highpass")
 
-    log.info(f"Extracting acoustic features with FFT params {frame=} {hop=} {n_fft=}")
+    audio_params = dataset.audio_params
+    log.info(f"Extracting acoustic features with FFT params {audio_params=}")
     ddf = (
-        b.map(extract_scalar_features_from_audio, frame_length=frame, hop_length=hop, n_fft=n_fft)
+        b.map(extract_scalar_features_from_audio, **audio_params)
         .map(log_features, features=["acoustic evenness index", "root mean square"])
         .map(transform_features, lambda f: np.log(1.0 - np.array(f)), name="log(1-{f})", features=["temporal entropy"])
         .to_dataframe(meta=acoustic_features_meta())
@@ -141,10 +141,6 @@ def main(
         memory (int, optional): Memory limit for each worker in GB. Defaults to 32.
         cores (int, optional): Number of CPU cores per worker. Defaults to 8.
         jobs (int, optional): Number of worker jobs to start. Defaults to 12.
-        segment_duration (float, optional): Segment duration for audio. Defaults to 60s.
-        frame (int, optional): Frame size for feature extraction. Defaults to 16000.
-        hop (int, optional): Hop size for feature extraction. Defaults to 4000.
-        n_fft (int, optional): Number of FFT points for feature extraction. Defaults to 16000.
         npartitions (int, optional): Number of partitions for Dask DataFrame. Defaults to 2000.
         local (bool, optional): Flag indicating whether to use a local cluster for computation.
         compute (bool, optional): Flag indicating whether to persist parquet eagerly. Defaults to false.
@@ -202,6 +198,11 @@ def get_base_parser():
         "--root-dir",
         type=lambda p: Path(p).expanduser(),
         help="Root directory of the audio files (nested folder structure permitted)",
+    )
+    parser.add_argument(
+        '--config-path',
+        type=lambda p: Path(p).expanduser(),
+        help='/path/to/dataset/config.yaml',
     )
     parser.add_argument(
         '--infile',
@@ -262,32 +263,6 @@ def get_base_parser():
         help='Sets single-threaded for debugging.'
     )
     parser.add_argument(
-        '--segment-duration',
-        type=float,
-        default=60.0,
-        help='Duration for chunking audio segments (defaults to 60s). Specify -1 to use full clip.'
-    )
-    parser.add_argument(
-        "--sample-rate",
-        type=int,
-        help="Audio sample rate for the audio",
-    )
-    parser.add_argument(
-        '--frame',
-        type=int,
-        help='Number of audio frames for a feature frame.'
-    )
-    parser.add_argument(
-        '--hop',
-        type=int,
-        help='Number of audio frames for the hop.'
-    )
-    parser.add_argument(
-        '--n-fft',
-        type=int,
-        help='Number of audio frames for the n_fft.'
-    )
-    parser.add_argument(
         "--dc-correction",
         type=int,
         help="Apply DC Correction by subtracting the mean",
@@ -311,6 +286,7 @@ def get_base_parser():
     )
     parser.set_defaults(func=main, **{
         "root_dir": "/data",
+        "config_path": "/config.yml",
         "infile": "/results/files_table.parquet",
         "outfile": "/results/recording_acoustic_features_table.parquet",
 
@@ -319,11 +295,6 @@ def get_base_parser():
         "cores": os.environ.get("CORES", 0),
         "threads_per_worker": os.environ.get("THREADS_PER_WORKER", 1),
 
-        "sample_rate": os.environ.get("SAMPLE_RATE", 48_000),
-        "segment_duration": os.environ.get("SEGMENT_LEN", 60.0),
-        "frame": os.environ.get("FRAME", 2_048),
-        "hop": os.environ.get("HOP", 512),
-        'n_fft': os.environ.get("N_FFT", 2_048),
         "dc_correction": os.environ.get("DC_CORR", 0),
         "high_pass_filter": os.environ.get("HIGH_PASS_FILTER", 1),
     })

@@ -1,4 +1,4 @@
-name: SoundingOutChorus
+name: SoundingOut
 pattern: >
   (?P<site_level_1>[^/]+)/
   (?P<site_level_2>[^/]+)/

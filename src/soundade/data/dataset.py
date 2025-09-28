@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import datetime as dt
 import logging
 import pandas as pd
 import re
+import yaml
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,7 +25,7 @@ class Dataset:
     segment_duration: float
 
     @classmethod
-    def from_config_path(cls, config_path: Path) -> "Dataset":
+    def from_config_path(cls, config_path: Path) -> Dataset:
         with open(config_path, "r") as f:
             config = yaml.safe_load(f.read())
         return cls(**config)

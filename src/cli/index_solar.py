@@ -37,6 +37,8 @@ def index_solar(
     npartitions: int = None,
     compute: bool = True,
 ) -> Tuple[dd.DataFrame | pd.DataFrame, dd.DataFrame | pd.DataFrame, dd.Scalar | None, dd.Scalar | None]:
+    if sites_ddf.index.name == "site_id":
+        sites_ddf = sites_ddf.reset_index()
     # extract date information and drop timestamp
     log.info("Extracting date from timestamp")
     files_ddf = (

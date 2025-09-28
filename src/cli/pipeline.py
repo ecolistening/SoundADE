@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Any, Tuple
 
 from soundade.hpc.arguments import DaskArgumentParser
-from soundade.datasets import datasets
 
 from cli.index_sites import index_sites
 from cli.index_audio import index_audio
@@ -36,8 +35,7 @@ def pipeline(
     partition_size: int = None,
     npartitions: int = None,
     **kwargs: Any,
-) -> Tuple[dd.DataFrame, dd.Scalar] | pd.DataFrame:
-    root_dir = Path(root_dir).expanduser()
+) -> None:
     # setup data sinks
     save_dir = save_dir.expanduser()
     save_dir.mkdir(exist_ok=True, parents=True)
@@ -49,14 +47,11 @@ def pipeline(
     # begin timing
     start_time = time.time()
     # index sites
-    # NB: this just resaves the parquet file and is effectively redundant
-    # however is left there incase custom behaviour by dataset is required
     log.info(f"Processing site information")
     sites_df = index_sites(
         root_dir=root_dir,
         config_path=config_path,
         out_file=sites_path,
-        dataset=dataset,
     )
     # index files
     log.info(f"Indexing audio files")
@@ -65,7 +60,6 @@ def pipeline(
         config_path=config_path,
         out_file=files_path,
         sites_ddf=dd.from_pandas(sites_df),
-        dataset=dataset,
         compute=True,
     )
     # index site-specific information
@@ -102,7 +96,6 @@ def pipeline(
         files_df=files_df,
         sites_df=sites_df,
         outfile=birdnet_species_probs_path,
-        min_conf=min_conf,
         compute=False,
     )
     # compute the graph
@@ -172,38 +165,6 @@ def get_base_parser():
         help="Path to a parquet file with columns ('site_id', 'site_name',  'latitude',  'longitude',  'timezone')",
     )
     parser.add_argument(
-        '--dataset',
-        type=str,
-        choices=datasets.keys(),
-        help='Name of the dataset',
-    )
-    parser.add_argument(
-        '--sample-rate',
-        type=int,
-        help='Resample rate for audio',
-    )
-    parser.add_argument(
-        '--segment-duration',
-        type=float,
-        default=60.0,
-        help='Duration for chunking audio segments. Defaults to 60s. Specify -1 to use full clip.',
-    )
-    parser.add_argument(
-        '--frame',
-        type=int,
-        help='Number of audio frames for a feature frame.',
-    )
-    parser.add_argument(
-        '--hop',
-        type=int,
-        help='Number of audio frames for the hop.',
-    )
-    parser.add_argument(
-        '--n-fft',
-        type=int,
-        help='Number of audio frames for the n_fft.',
-    )
-    parser.add_argument(
         "--dc-correction",
         type=int,
         help="Set to 1 to apply DC Correction by subtracting the mean",
@@ -212,11 +173,6 @@ def get_base_parser():
         "--high-pass-filter",
         type=int,
         help="Set to 1 to apply a high pass filter",
-    )
-    parser.add_argument(
-        "--min-conf",
-        type=float,
-        help="BirdNET confidence threshold. Defaults to 0.0 to collect all detections.",
     )
     parser.add_argument(
         "--threads-per-worker",
@@ -231,23 +187,14 @@ def get_base_parser():
     )
     parser.set_defaults(func=main, **{
         "root_dir": "/data",
+        "config_path": "/config.yml",
         "save_dir": "/results",
-        "dataset": os.environ.get("DATASET", None),
-
         'local': os.environ.get("LOCAL", True),
         "memory": os.environ.get("MEM_PER_CPU", 0),
         "cores": os.environ.get("CORES", 0),
         "threads_per_worker": os.environ.get("THREADS_PER_WORKER", 1),
-
-        "sample_rate": os.environ.get("SAMPLE_RATE", 48_000),
-        "segment_duration": os.environ.get("SEGMENT_LEN", 60.0),
-        "frame": os.environ.get("FRAME", 2_048),
-        "hop": os.environ.get("HOP", 512),
-        'n_fft': os.environ.get("N_FFT", 2_048),
         "dc_correction": os.environ.get("DC_CORR", 0),
         "high_pass_filter": os.environ.get("HIGH_PASS_FILTER", 1),
-
-        "min_conf": os.environ.get("MIN_CONF", 0.0),
     })
     return parser
 

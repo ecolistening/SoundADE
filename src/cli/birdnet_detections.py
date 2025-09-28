@@ -13,6 +13,7 @@ from dask.distributed import Client
 from pathlib import Path
 from typing import Any, Tuple
 
+from soundade.data.dataset import Dataset
 from soundade.audio.birdnet import species_probs, species_probs_meta
 from soundade.hpc.arguments import DaskArgumentParser
 
@@ -31,6 +32,9 @@ def birdnet_detections(
     compute: bool = False,
     **kwargs: Any,
 ) -> Tuple[dd.DataFrame, dd.Scalar] | pd.DataFrame:
+    if sites_df.index.name == "site_id":
+        sites_df = sites_df.reset_index()
+
     root_dir = Path(root_dir).expanduser()
     dataset = Dataset.from_config_path(config_path)
 

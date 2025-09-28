@@ -18,6 +18,7 @@ from typing import Any, Tuple
 from soundade.hpc.arguments import DaskArgumentParser
 from soundade.hpc.cluster import clusters
 from soundade.audio.feature.scalar import Features
+from soundade.data.dataset import Dataset
 from soundade.data.bag import (
     create_file_load_dictionary,
     load_audio_from_path,
@@ -67,6 +68,7 @@ def acoustic_features(
 ) -> Tuple[dd.DataFrame, dd.Scalar | None] | pd.DataFrame:
     root_dir = Path(root_dir).expanduser()
     dataset = Dataset.from_config_path(config_path)
+    params = dataset.audio_params
 
     log.info("Setting up acoustic feature extraction pipeline.")
     log.info("Corrupt files will be filtered.")
@@ -75,12 +77,12 @@ def acoustic_features(
     b = db.from_sequence(audio_dicts, npartitions=npartitions)
 
     log.info(f"Partitions after load: {b.npartitions}")
-    log.info(f"Loading audio at {sample_rate}Hz in segments of duration {dataaset.segment_duration}s")
+    log.info(f"Loading audio at {dataset.sample_rate}Hz in segments of duration {dataset.segment_duration}s")
 
     b = (
         b.map(create_file_load_dictionary, root_dir=root_dir, seconds=dataset.segment_duration, sr=dataset.sample_rate)
         .flatten()
-        .map(load_audio_from_path, root_dir=root_dir, sr=sample_rate)
+        .map(load_audio_from_path, root_dir=root_dir, sr=dataset.sample_rate)
     )
 
     if dc_correction:
@@ -91,10 +93,9 @@ def acoustic_features(
         log.info("Applying highpass filter at 300Hz")
         b = b.map(apply_high_pass_filter, fcut=300, forder=2, fname="butter", ftype="highpass")
 
-    audio_params = dataset.audio_params
-    log.info(f"Extracting acoustic features with FFT params {audio_params=}")
+    log.info(f"Extracting acoustic features with FFT {params=}")
     ddf = (
-        b.map(extract_scalar_features_from_audio, **audio_params)
+        b.map(extract_scalar_features_from_audio, **params)
         .map(log_features, features=["acoustic evenness index", "root mean square"])
         .map(transform_features, lambda f: np.log(1.0 - np.array(f)), name="log(1-{f})", features=["temporal entropy"])
         .to_dataframe(meta=acoustic_features_meta())

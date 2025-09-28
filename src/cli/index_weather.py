@@ -110,6 +110,8 @@ def index_weather(
     save_dir: Path,
     **kwargs: Any,
 ) -> None:
+    if sites_df.index.name == "site_id":
+        sites_df = sites_df.reset_index()
     log.info("Fetching weather data from open meteo")
     df = (
         files_df[["site_id", "timestamp"]]

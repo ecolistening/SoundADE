@@ -13,7 +13,7 @@ from typing import Any, Tuple
 
 from soundade.hpc.arguments import DaskArgumentParser
 from soundade.data.bag import file_path_to_audio_dict
-from soundade.datasets import datasets
+from soundade.data.dataset import Dataset
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)

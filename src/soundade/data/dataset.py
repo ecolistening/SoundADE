@@ -19,6 +19,8 @@ DEFAULT_PARAMS = dict(
     hop_length=1024,
     min_conf=0.0,
     segment_duration=60.0,
+    bin_step=500,
+    db_threshold=-47,
 )
 
 @attr.define
@@ -75,6 +77,22 @@ class Dataset:
             ))
         },
     )
+    bin_step: float = attr.field(
+        default=DEFAULT_PARAMS["bin_step"],
+        metadata={
+            "on_default": lambda: logger.warning((
+                f"No bin step for the AEI provided. Defaulting to bin_step={DEFAULT_PARAMS['bin_step']}."
+            ))
+        },
+    )
+    db_threshold: float = attr.field(
+        default=DEFAULT_PARAMS["db_threshold"],
+        metadata={
+            "on_default": lambda: logger.warning((
+                f"No dB threshold for the AEI provided. Defaulting to db_threshold={DEFAULT_PARAMS['db_threshold']}."
+            ))
+        },
+    )
 
     @classmethod
     def from_config_path(cls, config_path: Path) -> Dataset:
@@ -88,6 +106,8 @@ class Dataset:
             "n_fft": self.n_fft,
             "hop_length": self.hop_length,
             "frame_length": self.frame_length,
+            "bin_step": self.bin_step,
+            "db_threshold": self.db_threshold,
         }
 
     @property

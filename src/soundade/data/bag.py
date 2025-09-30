@@ -181,7 +181,6 @@ def extract_vector_features_from_audio(
         n_fft=n_fft,
         hop_length=hop_length,
     )
-    flim = (300, audio_dict.get("sr") // 2)
     # Update
     data_dict.update({
         'frame_length': frame_length,
@@ -189,6 +188,8 @@ def extract_vector_features_from_audio(
         'n_fft': n_fft,
         'feature_length': 0,
     })
+    # FIXME: this looks like legacy code from applying a bandpass filter (see `extract_banded_audio`)
+    # relevant to the AEI and the BI, however scikit-maad handles this internally
     if lim_from_dict:
         kwargs = kwargs | {'flim', (data_dict['low'], data_dict['high'])}
     for feature in Features:
@@ -199,7 +200,6 @@ def extract_vector_features_from_audio(
             frame_length=frame_length,
             hop_length=hop_length,
             n_fft=n_fft,
-            flim=flim,
             **kwargs,
         ).flatten().tolist()
         data_dict['feature_length'] = max(len(data_dict[feature.name]), data_dict['feature_length'])

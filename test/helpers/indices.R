@@ -23,23 +23,14 @@ suppressPackageStartupMessages({
 
 args <- commandArgs(trailingOnly = TRUE)
 
-fixtures_path <- args[1]
-output_file <- args[2]
-audio_path <- file.path(fixtures_path, "audio")
-results_path <- file.path(fixtures_path, "results")
+audio_path <- args[1]
+params_path <- args[2]
+output_path <- args[3]
+results_path <- file.path(dirname(output_path), "results")
 
-params <- yaml::read_yaml(file.path(fixtures_path, "audio_params.yml"))
+params <- yaml::read_yaml(params_path)
 
-window_length <- params$n_fft
-hop <- params$hop_length
-window <- params$window
-sr <- params$sr
-flim <- params$flim
-# calculate the overlap in %
-ovlp = ((window_length - hop) / window_length) * 100
-
-# for testing, we re-use the params file
-# but seewave uses "hanning" instead of "hann" as the window argument
+# but seewave uses "hanning" instead of "hann" as the params$window argument
 window_mapping <- function(x) {
   mapping <- c(
      "hann" = "hanning"
@@ -52,48 +43,52 @@ dir.create(results_path, recursive = TRUE, showWarnings = FALSE)
 files <- list.files(audio_path, pattern = "\\.wav$", full.names = TRUE)
 
 # compute using seewave
-wavs = lapply(files, readWave)
 
+wavs = lapply(files, function(file_path) {
+    wav = readWave(file_path)
+    # adjust integer amplitudes to floats
+    wav@left / (2^(wav@bit - 1))
+})
+
+rmss = sapply(wavs, function(wav) {
+    rs <- sapply(seq(1, length(wav), by = params$n_fft), function(i) {
+      rms(wav[i:min(i+params$n_fft-1, length(wav))])
+    })
+    mean(rs)
+})
 shs = sapply(wavs, function(wav) {
-    S <- spectro(wav, sr, channel = 1, wl = window_length, ovlp = ovlp, wn = window_mapping(window), dB = NULL)
+    S <- spectro(wav, params$sr, channel = 1, wl = params$n_fft, ovlp = ((params$n_fft - params$hop_length) / params$n_fft) * 100, wn = window_mapping(params$window), dB = NULL, plot = FALSE)
     S_pow = S$amp ** 2
     sh(S_pow, alpha = "shannon")
 })
 
 ths = sapply(wavs, function(wav) {
-    # env_hilbert <- env(wav, sr, envt = "hil")
-    # th(env_hilbert, breaks = 30)
-    Nt <- window_length
-    env_fast <- sapply(seq(1, length(wav@left), by = Nt), function(i) {
-        max(abs(wav@left[i:min(i+Nt-1, length(wav@left))]))
+    max_amp <- sapply(seq(1, length(wav), by = params$n_fft), function(i) {
+        max(abs(wav[i:min(i+params$n_fft-1, length(wav))]))
     })
-    env_fast <- env_fast / sum(env_fast)
-    th(env_fast, breaks = 30)
-})
-
-rmss = sapply(wavs, function(wav) {
-    samples <- wav@left
-    mean(rms(samples, wl = window_length))
+    max_amp <- max_amp / sum(max_amp)
+    th(max_amp, breaks = 30)
 })
 
 scs = sapply(wavs, function(wav) {
-    S <- spectro(wav, sr, channel = 1, wl = window_length, ovlp = ovlp, wn = window_mapping(window), dB = NULL)
+    S <- spectro(wav, params$sr, channel = 1, wl = params$n_fft, ovlp = ((params$n_fft - params$hop_length) / params$n_fft) * 100, wn = window_mapping(params$window), dB = NULL, plot = FALSE)
+    # for each column (timestep) of the amplitude spectrogram, extract the centroid
     centroids <- apply(S$amp, 2, function(t) {
-       specprop(cbind(S$freq, t), sr)$cent
+       specprop(cbind(S$freq, t), params$sr)$cent
     })
-    mean(centroids, na.rm = TRUE)
+    mean(centroids)
 })
 
 acis = sapply(wavs, function(wav) {
-    ACI(wav, sr, channel = 1, wl = window_length, ovlp = ovlp, wn = window_mapping(window), nbwindows = 1)
+    ACI(wav, params$sr, channel = 1, wl = params$n_fft, ovlp = ((params$n_fft - params$hop_length) / params$n_fft) * 100, wn = window_mapping(params$window), nbwindows = 1)
 })
 
 sfs = sapply(wavs, function(wav) {
-    mean(specflux(wav, sr, channel = 1, wl = window_length, ovlp = ovlp, wn = window_mapping(window), norm = TRUE, p = 2)[,2])
+    mean(specflux(wav, params$sr, channel = 1, wl = params$n_fft, ovlp = ((params$n_fft - params$hop_length) / params$n_fft) * 100, wn = window_mapping(params$window), norm = TRUE, p = 2, plot = FALSE)[,2])
 })
 
 zcrs = sapply(wavs, function(wav) {
-    mean(zcr(wav, channel = 1, sr, wl = window_length, ovlp = ovlp)[,2])
+    mean(zcr(wav, channel = 1, params$sr, wl = params$n_fft, ovlp = ((params$n_fft - params$hop_length) / params$n_fft) * 100, plot = FALSE)[,2])
 })
 
 df <- data.frame(
@@ -110,8 +105,8 @@ df <- data.frame(
 
 # compute using soundecology
 ais_params <- list(
-  acoustic_evenness = list(max_freq = sr / 2, db_threshold = -50, freq_step = 500),
-  bioacoustic_index = list(min_freq = flim[[1]], max_freq = sr / 2, fft_w = window_length)
+  acoustic_evenness = list(max_freq = 10000, db_threshold = -47, freq_step = 500),
+  bioacoustic_index = list(min_freq = 2000, max_freq = 15000, fft_w = params$n_fft)
 )
 
 for (acoustic_index in names(ais_params)) {
@@ -135,9 +130,10 @@ for (acoustic_index in names(ais_params)) {
       acoustic_index <- paste0(acoustic_index, "_index")
     }
     df[[acoustic_index]] <- result$LEFT_CHANNEL
-    unlink(result_path)
 }
 
+# cleanup
+unlink(results_path, recursive=TRUE)
+
 # persist dataframe
-parquet_file <- file.path(fixtures_path, output_file)
-write_parquet(df, parquet_file)
+write_parquet(df, output_path)

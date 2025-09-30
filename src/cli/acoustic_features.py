@@ -94,10 +94,11 @@ def acoustic_features(
 
     params = dataset.audio_params
     log.info(f"Extracting acoustic features with FFT {params=} for {len(audio_dicts)}")
+    epsilon = 1e-8
     ddf = (
         b.map(extract_scalar_features_from_audio, **params)
         .map(log_features, features=["acoustic evenness index", "root mean square"])
-        .map(transform_features, lambda f: np.log(1.0 - np.array(f)), name="log(1-{f})", features=["temporal entropy"])
+        .map(transform_features, lambda f: np.log(1.0 - np.array(f) + epsilon), name="log(1-{f})", features=["temporal entropy"])
         .to_dataframe(meta=acoustic_features_meta())
     )
 

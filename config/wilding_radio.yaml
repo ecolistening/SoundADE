@@ -2,7 +2,7 @@ name: WildingRadio
 pattern: recordings/(?P<site_level_2>[^/]+)/\d{4}/\d{2}/\d{2}/(?P<site_level_1>[^-]+)-(?P<hour>\d{2})(?:-\[(?P<minute>\d{2})-(?P<second>\d{2})\])?-(?P<day>\d{2})-(?P<month>\d{2})-(?P<year>\d{4})\.[wav|mp3|flac]
 sample_rate: 22_050
 frame_length: 940
-hop_length: 235
+hop_length: 470
 n_fft: 940
 min_conf: 0.0
 segment_duration: 60.0

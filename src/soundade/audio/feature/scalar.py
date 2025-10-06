@@ -64,7 +64,7 @@ def spectral_flux(
     y: NDArray | None = None,
     S: Tuple[NDArray, NDArray, NDArray, NDArray] | None = None,
     sr: int | None = None,
-    use_finite_difference: bool = True,
+    R_compatible: bool = False,
     **kwargs: Any,
 ) -> np.float32:
     assert (y is not None and sr is not None) or (S is not None)
@@ -72,18 +72,20 @@ def spectral_flux(
     if S is None:
         S = spectrogram(y, sr, **kwargs)
     Sxx, _, fn, _ = S
+    Sxx_pow = Sxx ** 2
 
-    # Normalize, column-wise
-    Sxx = np.subtract(Sxx, Sxx.min(axis=0).reshape(1, -1))  # Subtract min
-    Sxx = np.divide(Sxx, Sxx.max(axis=0).reshape(1, -1))
+    Z = Sxx_pow / Sxx_pow.sum(axis=0)
 
-    if not use_finite_difference:
-        diff = Sxx[:, 1:] - Sxx[:, :-1]
+    if R_compatible:
+        diff = Z[:, 1:] - Z[:, :-1]
+        flux = np.linalg.norm(diff, ord=2, axis=0)
+        flux = np.insert(flux, 0, 0)
     else:
         dx = FinDiff(1, 1)
-        diff = dx(Sxx)
+        diff = dx(Z)
+        flux = np.linalg.norm(diff, ord=2, axis=0)
 
-    return np.mean(np.linalg.norm(diff, axis=0))
+    return np.mean(flux)
 
 def zero_crossing_rate(
     y: NDArray | None = None,
@@ -104,7 +106,6 @@ def spectral_centroid(
     hop_length: int | None = None,
     window: str | None = None,
     pad_mode: str | None = None,
-    freq: NDArray | None = None,
     **kwargs: Any,
 ) -> np.float32:
     assert (y is not None and sr is not None) or (S is not None and freq is not None)
@@ -154,18 +155,53 @@ def acoustic_evenness_index(
     assert (y is not None and sr is not None) or (S is not None)
     assert (aei_flim is not None and bin_step is not None and db_threshold is not None)
 
+    fmin, fmax = aei_flim
+
     if R_compatible:
+        # seewave compatible AEI requires DC offset on spectrogram with 10 windows across the wav file
         y = y - np.mean(y)
+        # the FFT is hard-coded for seewave AEI
         S = spectrogram(y, sr, n_fft=sr // 10, hop_length=sr // 10, window=window, pad_mode=pad_mode)
         Sxx, _, freq, _ = S
-        return maad.features.acoustic_eveness_index(Sxx, freq, fmin=0, fmax=10_000, dB_threshold=-47)
+        return maad.features.acoustic_eveness_index(Sxx, freq, fmin=fmin, fmax=fmax, dB_threshold=db_threshold)
 
     if S is None:
         S = spectrogram(y, sr, n_fft=n_fft, hop_length=hop_length, window=window, pad_mode=pad_mode)
     Sxx, _, freq, _ = S
 
-    fmin, fmax = aei_flim
     return maad.features.acoustic_eveness_index(Sxx, freq, fmin=fmin, fmax=fmax, bin_step=bin_step, dB_threshold=db_threshold)
+
+def bioacoustic_index_soundecology(
+    Sxx: NDArray,
+    sr: int,
+    f_min: float,
+    f_max: float,
+) -> np.float32:
+    """
+    Replicates the original implementation for testing purposes:
+
+    https://rdrr.io/cran/soundecology/src/R/bioacoust_index.R
+
+    Oddities / errors to note about the soundecology / seewave implementation:
+
+    1) Seewave / soundecology drop the upper bin (nyquist) from the spectrogram
+    2) Seewave's meandB function uses an incorrect constant value when computing the mean in decibels
+    3) Soundecology subtracts minimum to account for negative values before integration
+    """
+    # map to decibels (correctly)
+    S_db = 20 * np.log10(Sxx / Sxx.max())
+    # calculate mean spectrum
+    # NB: seewave error: 'A' should be 20 since the spectrogram is an amplitude spectrogram, see seewave's meandB function
+    A = 10
+    S_mean = A * np.log10(np.mean(10**(S_db / A), axis=1))
+    # extract relevant frequency bins
+    bin_spacing = len(S_mean) / (sr // 2)
+    # NB: soundecology rounds down to drop the nyquist bin
+    f_min_idx, f_max_idx  = int(f_min * bin_spacing), int(f_max * bin_spacing)
+    S_mean_seg = S_mean[f_min_idx:f_max_idx]
+    # NB: soundecology error: subtract the minimum value to account for negative values (dB): its a bit odd!
+    S_mean_seg_norm = S_mean_seg - S_mean_seg.min()
+    return sum(S_mean_seg_norm * bin_spacing)
 
 def bioacoustic_index(
     y: NDArray | None = None,
@@ -188,7 +224,10 @@ def bioacoustic_index(
     fmin, fmax = bi_flim
     fmax = min(fmax, sr // 2)
 
-    return maad.features.bioacoustics_index(Sxx, fn, flim=(fmin, fmax), R_compatible=R_compatible)
+    if R_compatible:
+        return bioacoustic_index_soundecology(Sxx, sr, f_min=fmin, f_max=fmax)
+    else:
+        return maad.features.bioacoustics_index(Sxx, fn, flim=(fmin, fmax))
 
 def acoustic_complexity_index(
     y: NDArray | None = None,
@@ -217,26 +256,31 @@ def spectral_entropy(
     hop_length: int | None = None,
     window: str | None = None,
     pad_mode: str | None = None,
+    compatibility: str = "QUT",
     **kwargs: Any,
 ) -> np.float32:
     assert (y is not None and sr is not None) or (S is not None)
-
-    if S is None:
-        S = spectrogram(y, sr, n_fft=n_fft, hop_length=hop_length, window=window, pad_mode=pad_mode)
-
-    Sxx, _, _, _ = S
-    Sxx = np.power(Sxx, 2)
-
-    return maad.features.frequency_entropy(Sxx)[0]
+    S, freq = maad.sound.spectrum(y, sr, nperseg=n_fft, noverlap=n_fft - hop_length, nfft=n_fft, window=window, scaling="density")
+    Hf, _ = maad.features.frequency_entropy(S, compatibility=compatibility)
+    return Hf
 
 def temporal_entropy(
     y: NDArray | None = None,
     frame_length: int | None = None,
+    R_compatible: bool = False,
+    mode: str = "fast",
     **kwargs: Any,
 ) -> np.float32:
     assert y is not None and frame_length is not None
 
-    return maad.features.temporal_entropy(y, Nt=frame_length)
+    Ht = maad.features.temporal_entropy(
+        y,
+        Nt=frame_length,
+        compatibility="seewave" if R_compatible else "QUT",
+        mode=mode,
+    )
+
+    return Ht
 
 Features = [
     Feature('zero crossing rate', zero_crossing_rate, center=True),

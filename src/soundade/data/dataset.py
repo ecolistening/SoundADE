@@ -147,7 +147,7 @@ class Dataset:
             "R_compatible": self.R_compatible,
             "bi_flim": self.bi_flim,
             "aei_flim": self.aei_flim,
-            "compatibility": "seewave" if self.R_compatible else None,
+            "compatibility": "seewave" if self.R_compatible else "QUT",
             "window": "hann",
         }
 

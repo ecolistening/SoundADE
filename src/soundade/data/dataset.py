@@ -21,6 +21,8 @@ DEFAULT_PARAMS = dict(
     segment_duration=60.0,
     bin_step=500,
     db_threshold=-47,
+    R_compatible=False,
+    fcut=300,
 )
 
 @attr.define
@@ -93,6 +95,22 @@ class Dataset:
             ))
         },
     )
+    fcut: float = attr.field(
+        default=DEFAULT_PARAMS["fcut"],
+        metadata={
+            "on_default": lambda: logger.warning((
+                f"No high pass filter cut-off value set. Defaulting to fcut={DEFAULT_PARAMS['fcut']}"
+            ))
+        },
+    )
+    R_compatible: float = attr.field(
+        default=DEFAULT_PARAMS["R_compatible"],
+        metadata={
+            "on_default": lambda: logger.warning((
+                f"R_compatible flag set, computing seewave compatible values."
+            ))
+        },
+    )
 
     @classmethod
     def from_config_path(cls, config_path: Path) -> Dataset:
@@ -101,13 +119,15 @@ class Dataset:
         return cls(**config)
 
     @property
-    def audio_params(self):
+    def acoustic_feature_params(self):
         return {
             "n_fft": self.n_fft,
             "hop_length": self.hop_length,
             "frame_length": self.frame_length,
             "bin_step": self.bin_step,
             "db_threshold": self.db_threshold,
+            "R_compatible": self.R_compatible,
+            "compatibility": "seewave" if R_compatible else None,
         }
 
     @property

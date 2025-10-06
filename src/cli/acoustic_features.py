@@ -89,10 +89,10 @@ def acoustic_features(
         b = b.map(remove_dc_offset)
 
     if high_pass_filter:
-        log.info("Applying highpass filter at 300Hz")
-        b = b.map(apply_high_pass_filter, fcut=300, forder=2, fname="butter", ftype="highpass")
+        log.info(f"Applying highpass filter at {dataset.fcut}")
+        b = b.map(apply_high_pass_filter, fcut=dataset.fcut, forder=2, fname="butter", ftype="highpass")
 
-    params = dataset.audio_params
+    params = dataset.acoustic_feature_params
     log.info(f"Extracting acoustic features with FFT {params=} for {len(audio_dicts)}")
     epsilon = 1e-8
     ddf = (

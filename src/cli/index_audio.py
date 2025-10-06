@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Tuple
 
 from soundade.data.bag import file_path_to_audio_dict
-from soundade.datasets import datasets
+from soundade.data.dataset import Dataset
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -36,23 +36,24 @@ def file_meta():
     })
 
 def index_audio(
-    root_dir: str | Path,
-    out_file: str | Path,
+    root_dir: Path,
+    config_path: Path,
+    out_file: Path,
     sites_ddf: pd.DataFrame | dd.DataFrame | None,
-    dataset: str,
     partition_size: int = None,
     npartitions: int = None,
     compute: bool = True,
     **kwargs: Any,
 ) -> Tuple[dd.DataFrame, dd.Scalar] | pd.DataFrame:
-    assert dataset in datasets, f"Unsupported dataset '{dataset}'"
+    if sites_ddf.index.name == "site_id":
+        sites_ddf = sites_ddf.reset_index()
 
     if sites_ddf is not None:
         assert "site_id" in sites_ddf.columns, f"'site_id' key must be available in the sites table"
         assert "site_name" in sites_ddf.columns, f"'site_name' must be available in the sites table and should align with site directory structure"
 
     root_dir = Path(root_dir).expanduser()
-    dataset: Dataset = datasets[dataset]()
+    dataset = Dataset.from_config_path(config_path)
 
     log.info("Recursively discovering audio files...")
 
@@ -167,6 +168,11 @@ def get_base_parser():
         help="Root directory of the audio files (nested folder structure permitted)",
     )
     parser.add_argument(
+        '--config-path',
+        type=lambda p: Path(p).expanduser(),
+        help='/path/to/dataset/config.yaml',
+    )
+    parser.add_argument(
         '--out-file',
         type=lambda p: Path(p).expanduser(),
         help='Parquet file to save results.',
@@ -175,12 +181,6 @@ def get_base_parser():
         '--sitesfile',
         type=lambda p: Path(p).expanduser(),
         help="Path to a parquet file with columns ('site_id', 'site_name',  'latitude',  'longitude',  'timezone')",
-    )
-    parser.add_argument(
-        '--dataset',
-        type=str,
-        choices=datasets.keys(),
-        help='Name of the dataset',
     )
     parser.add_argument(
         "--memory",
@@ -211,9 +211,9 @@ def get_base_parser():
     )
     parser.set_defaults(func=main, **{
         "root_dir": "/data",
+        "config_path": "/config.yml",
         "out_file": "/results/files_table.parquet",
         "sitesfile": "/results/locations_table.parquet",
-        "dataset": os.environ.get("DATASET", None),
         "memory": os.environ.get("MEM_PER_CPU", 0),
         "cores": os.environ.get("CORES", 1),
         "threads_per_worker": 1,

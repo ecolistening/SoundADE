@@ -13,6 +13,7 @@ from dask.distributed import Client
 from pathlib import Path
 from typing import Any, Tuple
 
+from soundade.data.dataset import Dataset
 from soundade.audio.birdnet import species_probs, species_probs_meta
 from soundade.hpc.arguments import DaskArgumentParser
 
@@ -23,13 +24,20 @@ log = logging.getLogger(__name__)
 
 def birdnet_detections(
     root_dir: Path,
+    config_path: Path,
     files_df: pd.DataFrame,
     sites_df: pd.DataFrame,
     outfile: str | Path,
-    min_conf: float = 0.0,
     npartitions: int = None,
     compute: bool = False,
+    **kwargs: Any,
 ) -> Tuple[dd.DataFrame, dd.Scalar] | pd.DataFrame:
+    if sites_df.index.name == "site_id":
+        sites_df = sites_df.reset_index()
+
+    root_dir = Path(root_dir).expanduser()
+    dataset = Dataset.from_config_path(config_path)
+
     log.info(f"Setting up BirdNET species detection extraction pipeline.")
     log.info("Corrupt files will be filtered.")
 
@@ -44,10 +52,11 @@ def birdnet_detections(
     b = db.from_sequence(records, npartitions=npartitions)
 
     log.info(f"Partitions after load: {b.npartitions}")
-    log.info(f"Extracting detection probabilities with params {min_conf=} for {len(files_df)} files")
+    params = dataset.birdnet_params
+    log.info(f"Extracting detection probabilities with {params=} for {len(files_df)} files")
 
     ddf = (
-        b.map(species_probs, min_conf=min_conf)
+        b.map(species_probs, **params)
         .filter(len)
         .flatten()
         .to_dataframe(meta=species_probs_meta())
@@ -70,20 +79,16 @@ def birdnet_detections(
     return ddf, future
 
 def main(
-    root_dir: Path,
     infile: Path,
-    outfile: Path,
     sitesfile: Path,
     cluster: str | None,
-    memory: int = 0,
-    cores: int = 0,
-    jobs: int = 0,
-    queue: str = "general",
-    min_conf: float = 0.0,
-    npartitions: int | None = None,
-    local: bool = True,
-    threads_per_worker: int = 1,
-    debug: bool = False,
+    memory: int,
+    cores: int,
+    jobs: int,
+    queue: str,
+    local: bool,
+    threads_per_worker: int,
+    debug: bool,
     **kwargs: Any,
 ) -> None:
     """
@@ -99,7 +104,6 @@ def main(
         cores (int, optional): Number of CPU cores per worker. Defaults to 8.
         jobs (int, optional): Number of worker jobs to start. Defaults to 12.
         npartitions (int): Number of partitions to repartition the data into.
-        min_conf (float, optional): Confidence threshold used for omitting low confidence predictions
 
     Returns:
         None
@@ -132,13 +136,9 @@ def main(
     start_time = time.time()
 
     birdnet_detections(
-        root_dir,
-        pd.read_parquet(infile),
-        pd.read_parquet(sitesfile),
-        outfile,
-        min_conf=min_conf,
-        npartitions=npartitions,
-        compute=compute,
+        files_df=pd.read_parquet(infile),
+        sites_df=pd.read_parquet(sitesfile),
+        **kwargs,
     )
 
     log.info(f"BirdNET detection extraction complete")
@@ -153,6 +153,11 @@ def get_base_parser():
         "--root-dir",
         type=lambda p: Path(p).expanduser(),
         help="Root directory of the audio files (nested folder structure permitted)",
+    )
+    parser.add_argument(
+        '--config-path',
+        type=lambda p: Path(p).expanduser(),
+        help='/path/to/dataset/config.yaml',
     )
     parser.add_argument(
         "--sitesfile",
@@ -187,10 +192,10 @@ def get_base_parser():
     )
     parser.set_defaults(func=main, **{
         "root_dir": "/data",
+        "config_path": "/config.yaml",
         "infile": "/results/files_table.parquet",
         "outfile": "/results/birdnet_species_probs_table.parquet",
         "sitesfile": "/results/locations_table.parquet",
-        "min_conf": os.environ.get("MIN_CONF", 0.0),
         "memory": os.environ.get("MEM_PER_CPU", 0),
         "cores": os.environ.get("CORES", 1),
         "local": True,

@@ -28,6 +28,7 @@ def birdnet_embeddings(
     outfile: str | Path,
     npartitions: int = None,
     compute: bool = False,
+    **kwargs: Any,
 ) -> Tuple[dd.DataFrame, dd.Scalar] | pd.DataFrame:
     log.info(f"Setting up BirdNET embeddings extraction pipeline.")
     log.info("Corrupt files will be filtered.")
@@ -69,19 +70,16 @@ def birdnet_embeddings(
     return ddf, future
 
 def main(
-    root_dir: Path,
     infile: Path,
-    outfile: Path,
     sitesfile: Path,
     cluster: str | None,
-    memory: int = 0,
-    cores: int = 0,
-    jobs: int = 0,
-    queue: str = "general",
-    npartitions: int | None = None,
-    local: bool = True,
-    threads_per_worker: int = 1,
-    debug: bool = False,
+    memory: int,
+    cores: int,
+    jobs: int,
+    queue: str,
+    local: bool,
+    threads_per_worker: int,
+    debug: bool,
     **kwargs: Any,
 ) -> None:
     """
@@ -129,12 +127,9 @@ def main(
     start_time = time.time()
 
     birdnet_embeddings(
-        root_dir,
         pd.read_parquet(infile),
         pd.read_parquet(sitesfile),
-        outfile,
-        npartitions=npartitions,
-        compute=compute,
+        **kwargs,
     )
 
     log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")

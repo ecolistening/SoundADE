@@ -79,7 +79,7 @@ def acoustic_features(
     log.info(f"Loading audio at {dataset.sample_rate}Hz in segments of duration {dataset.segment_duration}s")
 
     b = (
-        b.map(create_file_load_dictionary, root_dir=root_dir, seconds=dataset.segment_duration, sr=dataset.sample_rate)
+        b.map(create_file_load_dictionary, root_dir=root_dir, seconds=dataset.segment_duration)
         .flatten()
         .map(load_audio_from_path, root_dir=root_dir, sr=dataset.sample_rate)
     )

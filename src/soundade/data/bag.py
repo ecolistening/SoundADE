@@ -66,21 +66,16 @@ def create_file_load_dictionary(
     audio_dict: Dict[str, Any],
     root_dir: Path,
     seconds: float | None = None,
-    sr: int | None = None,
 ) -> List[Dict[str, Any]]:
     """Create N offset dictonaries for each S length audio segment
 
     :param audio_dict: A dictionary of the form:
            { file_id: str, segment_id: str | int, file_path: str }
     :param seconds: Duration of each audio segment
-    :param sr: Leaving sr as the default None ensures that librosa will load the file at its native sample rate. 
     :return:
     """
     audio_segment_dicts = []
-    duration = librosa.get_duration(
-        path=root_dir / audio_dict["file_path"],
-        sr=sr or audio_dict.get("sr")
-    )
+    duration = librosa.get_duration(path=root_dir / audio_dict["file_path"])
     seconds = duration if seconds == -1 else seconds
     seconds = seconds or duration
     segments = int(duration // seconds)

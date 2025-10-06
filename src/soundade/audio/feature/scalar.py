@@ -255,7 +255,7 @@ def spectral_entropy(
     hop_length: int | None = None,
     window: str | None = None,
     pad_mode: str | None = None,
-    compatibility: str | None = None,
+    compatibility: str = "QUT",
     **kwargs: Any,
 ) -> np.float32:
     assert y is not None and sr is not None
@@ -266,19 +266,12 @@ def spectral_entropy(
 def temporal_entropy(
     y: NDArray | None = None,
     frame_length: int | None = None,
-    R_compatible: bool = False,
+    compatibility: str = "QUT",
     mode: str = "fast",
     **kwargs: Any,
 ) -> np.float32:
     assert y is not None and frame_length is not None
-
-    Ht = maad.features.temporal_entropy(
-        y,
-        Nt=frame_length,
-        compatibility="seewave" if R_compatible else "QUT",
-        mode=mode,
-    )
-
+    Ht = maad.features.temporal_entropy(y, Nt=frame_length, compatibility=compatibility, mode=mode)
     return Ht
 
 Features = [

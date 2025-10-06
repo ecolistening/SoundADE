@@ -52,11 +52,11 @@ def birdnet_detections(
     b = db.from_sequence(records, npartitions=npartitions)
 
     log.info(f"Partitions after load: {b.npartitions}")
-    min_conf = dataset.min_conf
-    log.info(f"Extracting detection probabilities with params {min_conf=} for {len(files_df)} files")
+    params = dataset.birdnet_params
+    log.info(f"Extracting detection probabilities with {params=} for {len(files_df)} files")
 
     ddf = (
-        b.map(species_probs, **dataset.birdnet_params)
+        b.map(species_probs, **params)
         .filter(len)
         .flatten()
         .to_dataframe(meta=species_probs_meta())

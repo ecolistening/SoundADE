@@ -16,8 +16,6 @@ from soundade.audio.feature.scalar import Features as ScalarFeatures
 from soundade.audio.feature.vector import Features, do_spectrogram
 from soundade.audio.filter import dc_offset
 
-FRAME_LENGTH, HOP_LENGTH = 16000, 4000
-
 logging.basicConfig(level=logging.INFO)
 
 INVALID_AUDIO_DICT = {
@@ -157,9 +155,9 @@ def load_audio_from_path(audio_dict: Dict, root_dir: Path, sr: int | None = None
 
 def extract_vector_features_from_audio(
     audio_dict: Dict,
-    frame_length: int = FRAME_LENGTH,
-    hop_length: int = HOP_LENGTH,
-    n_fft: int = FRAME_LENGTH,
+    frame_length: int = 16_000,
+    hop_length: int = 4000,
+    n_fft: int = 16_000,
     lim_from_dict: bool = False,
     **kwargs: Any,
 ) -> Dict:
@@ -206,9 +204,9 @@ def extract_vector_features_from_audio(
 
 def extract_scalar_features_from_audio(
     audio_dict: Dict,
-    frame_length: int = FRAME_LENGTH,
-    hop_length: int = HOP_LENGTH,
-    n_fft: int = FRAME_LENGTH,
+    frame_length: int,
+    hop_length: int,
+    n_fft: int,
     lim_from_dict: bool = False,
     **kwargs: Any,
 ) -> Dict:

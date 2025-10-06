@@ -1,28 +1,80 @@
 from __future__ import annotations
 
+import attr
 import datetime as dt
 import logging
 import pandas as pd
 import re
 import yaml
 
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
-@dataclass
+DEFAULT_PARAMS = dict(
+    sample_rate=48_000,
+    n_fft=2048,
+    hop_length=1024,
+    min_conf=0.0,
+    segment_duration=60.0,
+)
+
+@attr.define
 class Dataset:
     name: str
     pattern: str
-    sample_rate: int
-    frame_length: int
-    hop_length: int
-    n_fft: int
-    min_conf: float
-    segment_duration: float
+    sample_rate: int = attr.field(
+        default=DEFAULT_PARAMS["sample_rate"],
+        metadata={
+            "on_default": lambda: logger.warning((
+                f"No sample rate provided. Defaulting to sample_rate={DEFAULT_PARAMS['sample_rate']}."
+                "Any audio below this value will be upsampled which will cause aliasing and bias results."
+            ))
+        },
+    )
+    n_fft: int = attr.field(
+        default=DEFAULT_PARAMS["n_fft"],
+        metadata={
+            "on_default": lambda: logger.warning((
+                f"No FFT window size provided. Defaulting to n_fft={DEFAULT_PARAMS['n_fft']}."
+            ))
+        },
+    )
+    hop_length: int = attr.field(
+        default=DEFAULT_PARAMS["hop_length"],
+        metadata={
+            "on_default": lambda: logger.warning((
+                f"No FFT hop size provided. Defaulting to hop_length={DEFAULT_PARAMS['min_conf']}."
+            ))
+        },
+    )
+    frame_length: int = attr.field(
+        default=DEFAULT_PARAMS["n_fft"],
+        metadata={
+            "on_default": lambda: logger.warning((
+                f"No window size provided. Defaulting to same as FFT size frame_length={DEFAULT_PARAMS['n_fft']}."
+            ))
+        },
+    )
+    min_conf: float = attr.field(
+        default=DEFAULT_PARAMS["min_conf"],
+        metadata={
+            "on_default": lambda: logger.warning((
+                f"No threshold provided for BirdNET. Defaulting to min_conf={DEFAULT_PARAMS['min_conf']}."
+            ))
+        },
+
+    )
+    segment_duration: float = attr.field(
+        default=DEFAULT_PARAMS["segment_duration"],
+        metadata={
+            "on_default": lambda: logger.warning((
+                f"No segment duration provided. Defaulting to segment_duration={DEFAULT_PARAMS['segment_duration']}."
+            ))
+        },
+    )
 
     @classmethod
     def from_config_path(cls, config_path: Path) -> Dataset:
@@ -33,7 +85,6 @@ class Dataset:
     @property
     def audio_params(self):
         return {
-            "sr": self.sample_rate,
             "n_fft": self.n_fft,
             "hop_length": self.hop_length,
             "frame_length": self.frame_length,

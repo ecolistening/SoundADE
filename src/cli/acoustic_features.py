@@ -68,7 +68,6 @@ def acoustic_features(
 ) -> Tuple[dd.DataFrame, dd.Scalar | None] | pd.DataFrame:
     root_dir = Path(root_dir).expanduser()
     dataset = Dataset.from_config_path(config_path)
-    params = dataset.audio_params
 
     log.info("Setting up acoustic feature extraction pipeline.")
     log.info("Corrupt files will be filtered.")
@@ -93,7 +92,8 @@ def acoustic_features(
         log.info("Applying highpass filter at 300Hz")
         b = b.map(apply_high_pass_filter, fcut=300, forder=2, fname="butter", ftype="highpass")
 
-    log.info(f"Extracting acoustic features with FFT {params=}")
+    params = dataset.audio_params
+    log.info(f"Extracting acoustic features with FFT {params=} for {len(audio_dicts)}")
     ddf = (
         b.map(extract_scalar_features_from_audio, **params)
         .map(log_features, features=["acoustic evenness index", "root mean square"])

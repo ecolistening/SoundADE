@@ -6,3 +6,4 @@ hop_length: 1024
 n_fft: 2_048
 segment_duration: 60.0
 min_conf: 0.0
+R_compatible: true

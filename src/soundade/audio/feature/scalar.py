@@ -250,16 +250,15 @@ def acoustic_complexity_index(
 
 def spectral_entropy(
     y: NDArray | None = None,
-    S: Tuple[NDArray, NDArray, NDArray, NDArray] = None,
     sr: int | None = None,
     n_fft: int | None = None,
     hop_length: int | None = None,
     window: str | None = None,
     pad_mode: str | None = None,
-    compatibility: str = "QUT",
+    compatibility: str | None = None,
     **kwargs: Any,
 ) -> np.float32:
-    assert (y is not None and sr is not None) or (S is not None)
+    assert y is not None and sr is not None
     S, freq = maad.sound.spectrum(y, sr, nperseg=n_fft, noverlap=n_fft - hop_length, nfft=n_fft, window=window, scaling="density")
     Hf, _ = maad.features.frequency_entropy(S, compatibility=compatibility)
     return Hf

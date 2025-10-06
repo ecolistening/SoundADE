@@ -23,6 +23,8 @@ DEFAULT_PARAMS = dict(
     db_threshold=-47,
     R_compatible=False,
     fcut=300,
+    bi_flim=[2000, 16000],
+    aei_flim=[0, 20000],
 )
 
 @attr.define
@@ -111,6 +113,22 @@ class Dataset:
             ))
         },
     )
+    bi_flim: float = attr.field(
+        default=DEFAULT_PARAMS["bi_flim"],
+        metadata={
+            "on_default": lambda: logger.warning((
+                f"BI frequeny bounds not set, defaulting to {DEFAULT_PARAMS['bi_flim']}"
+            ))
+        },
+    )
+    aei_flim: float = attr.field(
+        default=DEFAULT_PARAMS["aei_flim"],
+        metadata={
+            "on_default": lambda: logger.warning((
+                f"AEI frequeny bounds not set, defaulting to {DEFAULT_PARAMS['aei_flim']}"
+            ))
+        },
+    )
 
     @classmethod
     def from_config_path(cls, config_path: Path) -> Dataset:
@@ -127,7 +145,10 @@ class Dataset:
             "bin_step": self.bin_step,
             "db_threshold": self.db_threshold,
             "R_compatible": self.R_compatible,
-            "compatibility": "seewave" if R_compatible else None,
+            "bi_flim": self.bi_flim,
+            "aei_flim": self.aei_flim,
+            "compatibility": "seewave" if self.R_compatible else None,
+            "window": "hann",
         }
 
     @property

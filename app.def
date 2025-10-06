@@ -1,9 +1,6 @@
 Bootstrap: docker
 From: python:3.10-slim-bookworm
 
-%environment
-  export PATH=/root/.local/bin:$PATH
-
 %files
   src /app/src
   config /app/config
@@ -20,14 +17,15 @@ From: python:3.10-slim-bookworm
   # install UV
   curl -LsSf https://astral.sh/uv/0.7.8/install.sh -o /uv-installer.sh
   sh /uv-installer.sh && rm /uv-installer.sh
-  export PATH=$HOME/.local/bin:$PATH
-  . $HOME/.local/bin:$PATH
+  export PATH="/root/.local/bin:$PATH"
 
   # install local dependencies
+  . $HOME/.local/bin/env
   cd /app
   uv sync --locked
 
 %runscript
+  . $HOME/.local/bin/env
   cd /app
   uv run main.py pipeline
 

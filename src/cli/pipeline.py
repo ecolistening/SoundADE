@@ -34,12 +34,15 @@ def pipeline(
     dc_correction: int,
     partition_size: int = None,
     npartitions: int = None,
+    no_birdnet: bool = False,
+    no_indices: bool = False,
     **kwargs: Any,
 ) -> None:
     # setup data sinks
     save_dir = save_dir.expanduser()
     save_dir.mkdir(exist_ok=True, parents=True)
     sites_path = sitesfile or save_dir / "locations_table.parquet"
+    tmp_files_path = save_dir / "files_table.tmp.parquet"
     files_path = save_dir / "files_table.parquet"
     solar_path = save_dir / "solar_table.parquet"
     recording_acoustic_features_path = save_dir / "recording_acoustic_features_table.parquet"
@@ -58,7 +61,7 @@ def pipeline(
     files_df, _ = index_audio(
         root_dir=root_dir,
         config_path=config_path,
-        out_file=files_path,
+        out_file=tmp_files_path,
         sites_ddf=dd.from_pandas(sites_df),
         compute=True,
     )
@@ -71,6 +74,8 @@ def pipeline(
         outfile=solar_path,
         compute=True,
     )
+    # cleanup old files table
+    shutil.rmtree(tmp_files_path)
     log.info(f"Indexing weather data")
     index_weather(
         files_df=files_df,
@@ -78,29 +83,34 @@ def pipeline(
         save_dir=save_dir,
     )
     # extract acoustic featres
-    log.info(f"Extracting acoustic features")
-    acoustic_features_ddf, acoustic_features_future = acoustic_features(
-        root_dir=root_dir,
-        config_path=config_path,
-        files_df=files_df,
-        outfile=recording_acoustic_features_path,
-        high_pass_filter=high_pass_filter,
-        dc_correction=dc_correction,
-        compute=False,
-    )
+    futures = []
+    if not no_indices:
+        log.info(f"Extracting acoustic features")
+        acoustic_features_ddf, acoustic_features_future = acoustic_features(
+            root_dir=root_dir,
+            config_path=config_path,
+            files_df=files_df,
+            outfile=recording_acoustic_features_path,
+            high_pass_filter=high_pass_filter,
+            dc_correction=dc_correction,
+            compute=False,
+        )
+        futures.append(acoustic_features_future)
     # extract birdnet species scores
-    log.info(f"Extracting BirdNET species probabilities")
-    birdnet_species_ddf, birdnet_species_future = birdnet_detections(
-        root_dir=root_dir,
-        config_path=config_path,
-        files_df=files_df,
-        sites_df=sites_df,
-        outfile=birdnet_species_probs_path,
-        compute=False,
-    )
+    if not no_birdnet:
+        log.info(f"Extracting BirdNET species probabilities")
+        birdnet_species_ddf, birdnet_species_future = birdnet_detections(
+            root_dir=root_dir,
+            config_path=config_path,
+            files_df=files_df,
+            sites_df=sites_df,
+            outfile=birdnet_species_probs_path,
+            compute=False,
+        )
+        futures.append(birdnet_species_future)
     # compute the graph
     log.info(f"Processing...")
-    dask.compute(acoustic_features_future, birdnet_species_future)
+    dask.compute(*futures)
     # and we're done!
     log.info("Pipeline complete")
     log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")
@@ -184,6 +194,16 @@ def get_base_parser():
         default=False,
         action="store_true",
         help="Sets single-threaded for debugging.",
+    )
+    parser.add_argument(
+        "--no-birdnet",
+        default=False,
+        action="store_true",
+    )
+    parser.add_argument(
+        "--no-indices",
+        default=False,
+        action="store_true",
     )
     parser.set_defaults(func=main, **{
         "root_dir": "/data",

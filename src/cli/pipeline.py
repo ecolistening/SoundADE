@@ -4,6 +4,7 @@ import datetime as dt
 import logging
 import os
 import pandas as pd
+import shutil
 import time
 
 from dask import bag as db

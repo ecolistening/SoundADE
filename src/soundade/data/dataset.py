@@ -5,7 +5,6 @@ import datetime as dt
 import logging
 import pandas as pd
 import re
-import shutil
 import yaml
 
 from pathlib import Path

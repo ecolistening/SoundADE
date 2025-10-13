@@ -3,6 +3,15 @@ Acoustic Descriptor Extraction tool for processing sound on High Performance Com
 
 ## Installation
 
+### Python
+Install `uv` package. You can then bundle dependencies. Finally you can run the test suite, and the different parts of the pipeline either independently or as a whole using the CLI.
+
+```
+uv sync --locked
+uv run pytest -v
+uv run main.py --help
+```
+
 ### Docker
 Install `docker-ce` package. You can then build and run the full pipeline using:
 
@@ -97,3 +106,12 @@ The `site_name` variable should match `/<site_level_1>/<site_level_2>/<site_leve
 
 In this case `<site_level_1>` is the country (EC = Ecuador), `<site_level_2>` is a site identifier (TE), and `<site_level_3>` is a recorder ID number. Therefore the `site_name` column must contain records `'/EC/TE/9'` for `'/EC/TE/10'`. The depth for the site level is arbitrary, you can define as many as you like in the regular expression for discovering audio files.
 
+## Tests
+Run the test suite:
+
+```
+uv run pytest -v
+```
+
+## Development
+If you want to make a contribution to the codebase, please correspond with the package creators specified in the `pyproject.toml`.

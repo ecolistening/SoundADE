@@ -249,7 +249,7 @@ def extract_scalar_features_from_audio(
 
 def log_features(features_dict: Dict, features: Iterable = [], epsilon: float = 1e-8):
     for f in features:
-        features_dict.update({f'log {f}': np.log(np.array(features_dict[f]) + epsilon).tolist()})
+        features_dict.update({f'log {f}': np.log(np.maximum(np.array(features_dict[f]), epsilon)).tolist()})
     return features_dict
 
 def transform_features(features_dict: Dict, transformation: Callable, name='{f}', features: Iterable = []):

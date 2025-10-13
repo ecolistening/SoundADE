@@ -76,7 +76,9 @@ def pipeline(
         compute=True,
     )
     # cleanup old files table
+    log.info(f"Removing temp file index {tmp_files_path}")
     shutil.rmtree(tmp_files_path)
+    log.info(f"Final file index saved at {files_path}")
     log.info(f"Indexing weather data")
     index_weather(
         files_df=files_df,

@@ -1,18 +1,20 @@
-if (!requireNamespace("seewave", quietly = TRUE)) {
-  install.packages("seewave")
-}
-if (!requireNamespace("tuneR", quietly = TRUE)) {
-  install.packages("tuneR")
-}
-if (!requireNamespace("soundecology", quietly = TRUE)) {
-    install.packages("soundecology", dependencies = TRUE)
-}
 if (!requireNamespace("arrow", quietly = TRUE)) {
   install.packages("arrow")
 }
 if (!requireNamespace("yaml", quietly = TRUE)) {
   install.packages("yaml")
 }
+if (!requireNamespace("tuneR", quietly = TRUE)) {
+  install.packages("tuneR")
+}
+if (!requireNamespace("seewave", quietly = TRUE)) {
+  install.packages("seewave", dependencies = TRUE)
+}
+if (!requireNamespace("soundecology", quietly = TRUE)) {
+    install.packages("soundecology", dependencies = TRUE)
+}
+
+# load packages
 suppressPackageStartupMessages({
   library(seewave)
   library(tuneR)
@@ -21,16 +23,20 @@ suppressPackageStartupMessages({
   library(soundecology)
 })
 
+# fetch args
 args <- commandArgs(trailingOnly = TRUE)
 
 audio_path <- args[1]
 params_path <- args[2]
 output_path <- args[3]
 results_path <- file.path(dirname(output_path), "results")
+dir.create(results_path, recursive = TRUE, showWarnings = FALSE)
+files <- list.files(audio_path, pattern = "\\.wav$", full.names = TRUE)
 
+# load audio parameters
 params <- yaml::read_yaml(params_path)
 
-# but seewave uses "hanning" instead of "hann" as the params$window argument
+# seewave uses "hanning" instead of "hann" as the params$window argument
 window_mapping <- function(x) {
   mapping <- c(
      "hann" = "hanning"
@@ -38,11 +44,8 @@ window_mapping <- function(x) {
   ifelse(x %in% names(mapping), mapping[x], x)
 }
 
-dir.create(results_path, recursive = TRUE, showWarnings = FALSE)
-
-files <- list.files(audio_path, pattern = "\\.wav$", full.names = TRUE)
-
-# compute using seewave
+# compute AI's using seewave
+print("Extracting features...")
 
 wavs = lapply(files, function(file_path) {
     wav = readWave(file_path)

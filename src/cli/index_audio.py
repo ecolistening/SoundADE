@@ -45,11 +45,10 @@ def index_audio(
     compute: bool = True,
     **kwargs: Any,
 ) -> Tuple[dd.DataFrame, dd.Scalar] | pd.DataFrame:
-    if sites_ddf.index.name == "site_id":
-        sites_ddf = sites_ddf.reset_index()
-
     if sites_ddf is not None:
-        assert "site_id" in sites_ddf.columns, f"'site_id' key must be available in the sites table"
+        if sites_ddf.index.name == "site_id":
+            sites_ddf = sites_ddf.reset_index()
+        assert "site_id" in sites_ddf.columns, f"'site_id' must be available in the sites table"
         assert "site_name" in sites_ddf.columns, f"'site_name' must be available in the sites table and should align with site directory structure"
 
     root_dir = Path(root_dir).expanduser()

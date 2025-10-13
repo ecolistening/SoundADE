@@ -32,7 +32,7 @@ def birdnet_detections(
     compute: bool = False,
     **kwargs: Any,
 ) -> Tuple[dd.DataFrame, dd.Scalar] | pd.DataFrame:
-    if sites_df.index.name == "site_id":
+    if sites_df is not None and sites_df.index.name == "site_id":
         sites_df = sites_df.reset_index()
 
     root_dir = Path(root_dir).expanduser()
@@ -45,10 +45,15 @@ def birdnet_detections(
     files_df["local_file_path"] = root_dir / files_df["file_path"].astype(str)
     columns = ["file_id", "local_file_path", "timestamp", "site_id"]
 
-    records = files_df[columns].merge(
-        sites_df[["site_id", "latitude", "longitude"]],
-        on="site_id"
-    ).to_dict(orient="records")
+    if sites_df is not None:
+        df = files_df[columns].merge(
+            sites_df[["site_id", "latitude", "longitude"]],
+            on="site_id"
+        )
+    else:
+        df = files_df
+
+    records = df.to_dict(orient="records")
     b = db.from_sequence(records, npartitions=npartitions)
 
     log.info(f"Partitions after load: {b.npartitions}")

@@ -57,34 +57,42 @@ def pipeline(
         config_path=config_path,
         out_file=sites_path,
     )
+    # tolerant to missing sites file
+    sites_ddf = dd.from_pandas(sites_df) if sites_df is not None else None
     # index files
     log.info(f"Indexing audio files")
     files_df, _ = index_audio(
         root_dir=root_dir,
         config_path=config_path,
         out_file=tmp_files_path,
-        sites_ddf=dd.from_pandas(sites_df),
+        sites_ddf=sites_ddf,
         compute=True,
     )
     # index site-specific information
-    log.info(f"Indexing solar times")
-    index_solar(
-        files_ddf=dd.from_pandas(files_df),
-        sites_ddf=dd.from_pandas(sites_df),
-        infile=files_path,
-        outfile=solar_path,
-        compute=True,
-    )
+    if sites_ddf is not None:
+        log.info(f"Indexing solar times")
+        index_solar(
+            files_ddf=dd.from_pandas(files_df),
+            sites_ddf=sites_ddf,
+            infile=files_path,
+            outfile=solar_path,
+            compute=True,
+        )
+    else:
+        # ensure files index is saved in the correct location
+        shutil.copytree(tmp_files_path, files_path)
     # cleanup old files table
+    log.info(f"Final file index saved at {files_path}")
     log.info(f"Removing temp file index {tmp_files_path}")
     shutil.rmtree(tmp_files_path)
-    log.info(f"Final file index saved at {files_path}")
-    log.info(f"Indexing weather data")
-    index_weather(
-        files_df=files_df,
-        sites_df=sites_df,
-        save_dir=save_dir,
-    )
+    # index weather data
+    if sites_ddf is not None:
+        log.info(f"Indexing weather data")
+        index_weather(
+            files_df=files_df,
+            sites_df=sites_df,
+            save_dir=save_dir,
+        )
     # extract acoustic featres
     futures = []
     if not no_indices:

@@ -27,9 +27,11 @@ def index_sites(
     dataset = Dataset.from_config_path(config_path)
 
     df = dataset.index_sites(root_dir, out_file)
-
-    df.to_parquet(Path(out_file))
-    log.info(f"Sites index saved to {out_file}")
+    if df is not None:
+        df.to_parquet(Path(out_file))
+        log.info(f"Sites index saved to {out_file}")
+    else:
+        log.warning(f"Failed to index sites")
 
     return df
 

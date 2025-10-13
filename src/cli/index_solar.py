@@ -37,8 +37,16 @@ def index_solar(
     npartitions: int = None,
     compute: bool = True,
 ) -> Tuple[dd.DataFrame | pd.DataFrame, dd.DataFrame | pd.DataFrame, dd.Scalar | None, dd.Scalar | None]:
+    assert sites_ddf is not None, "Site-specific information (latitude / longitude) is required to extract solar data. See instructions in the README."
+
     if sites_ddf.index.name == "site_id":
         sites_ddf = sites_ddf.reset_index()
+
+    site_columns = ["timezone", "latitude", "longitude"]
+    assert "site_id" in sites_ddf.columns, f"'site_id' must be available in the sites table"
+    for col in site_columns:
+        assert col in sites_ddf.columns, f"'{col}' must be available in the sites table"
+
     # extract date information and drop timestamp
     log.info("Extracting date from timestamp")
     files_ddf = (
@@ -48,8 +56,6 @@ def index_solar(
 
     # stage 1: extract unique solar table, referencing
     log.info("Building solar dataframe containing dawn/dusk/sunrise/sunset information")
-    site_columns = ["timezone", "latitude", "longitude"]
-
     ddf = (
         files_ddf[["site_id", "date"]]
         # drop duplicates at a site on a date
@@ -72,9 +78,8 @@ def index_solar(
         .astype({"site_id": "string[pyarrow]"})
     )
 
-    log.info("Merging with file index, appending times relative to solar timestamps")
-
     # stage 2: join solar info with the file table and calculate file-specific solar data
+    log.info("Merging with file index, appending times relative to solar timestamps")
     solar_columns = ["date", *tod_cols]
     files_ddf = (
         files_ddf
@@ -91,6 +96,9 @@ def index_solar(
     # remove site columns from solar table
     solar_ddf = solar_ddf.drop(site_columns, axis=1)
 
+    # FIXME: will cause duplicates when run independently
+    # this isn't a problem in the main pipeline as it uses a temp directory for original file index
+    # should output to separate locations, maybe just specify a save_dir instead of individual files
     files_future = files_ddf.to_parquet(
         Path(infile),
         version=PYARROW_VERSION,
@@ -107,7 +115,7 @@ def index_solar(
     )
 
     log.info(f"Solar queued, will persist to {outfile}")
-    log.info(f"Indexing files queued, will overwrite {infile}")
+    log.info(f"Indexing files queued, will persist to {infile}")
 
     if compute:
         dask.compute(files_future, solar_future)

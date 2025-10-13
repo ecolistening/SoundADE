@@ -157,10 +157,8 @@ class Dataset:
             "min_conf": self.min_conf,
         }
 
-    def index_sites(self, root_dir: Path, sites_file: Path) -> pd.DataFrame:
-        assert sites_file.exists(), \
-            f"{self.__class__.__name__} locations is not extracted but provided as a separate file at {sites_file}"
-        return pd.read_parquet(sites_file)
+    def index_sites(self, root_dir: Path, sites_file: Path) -> pd.DataFrame | None:
+        return pd.read_parquet(sites_file) if sites_file.exists() else None
 
     def extract_site_name(self, audio_dict: Dict[str, Any]) -> Dict[str, Any]:
         file_path = audio_dict["file_path"]

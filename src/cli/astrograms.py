@@ -17,7 +17,6 @@ logging.basicConfig(level=logging.INFO)
 def astrogram_meta(num_bins):
     return pd.DataFrame({
         "site_id": pd.Series(dtype="string"),
-        # "site_name": pd.Series(dtype="string"),
         "date": pd.Series(dtype="datetime64[ns]"),
         "dddn": pd.Series(dtype='string'),
         **{
@@ -28,34 +27,21 @@ def astrogram_meta(num_bins):
 
 def astrogram(
     files_ddf: dd.DataFrame,
-    sites_ddf: dd.DataFrame,
     features_ddf: dd.DataFrame,
     outfile: Path,
+    num_bins: int = 10,
     **kwargs
 ) -> Tuple[dd.DataFrame, dd.Scalar | None] | Tuple[pd.DataFrame, None]:
-    logging.debug(f'Partitions: {ddf.npartitions}')
-    if npartitions is not None:
-        ddf = ddf.repartition(npartitions=npartitions)
-    ddf = ddf.persist()
-
-    logging.info('Initial Load')
-    print('ddf: (',len(ddf),',',len(ddf.columns),')')
-    print(f'ddf.meta: {ddf._meta}')
-    print(f'ddf.columns: {ddf.columns}')
-
     group_by = ["file_id", "timestamp", "dddn"]
     non_feature_columns = ["sr", "segment_id", "segment_idx", "file_id", "duration", "offset", "frame_length", "hop_length", "n_fft", "feature_length"]
     feature_columns = features_ddf.columns[~features_ddf.columns.isin(non_feature_columns)].tolist()
 
     ddf = (
         files_ddf[files_columns]
-        # .merge(sites_ddf[["site_id", "site_name"]], on="site_id", how="left")
         .merge(features_ddf[["file_id", *feature_columns]], on="file_id", how="left")
         .assign(date=lambda df: df.timestamp.dt.date.astype("datetime64[ns]"))
         .melt(id_vars=[*files_columns, *non_feature_columns], var_name='frame', value_name='value')
     )
-
-    num_bins = 10
 
     astro_ddf = (
         ddf
@@ -89,7 +75,7 @@ def astrogram(
         compute=False,
     )
 
-    log.info(f"Queued {len(audio_dicts)} files for acoustic feature extraction. Will persist to {outfile}")
+    log.info(f"Building astrograms... Will persist to {outfile}")
 
     if compute:
         dask.compute(future)
@@ -98,7 +84,8 @@ def astrogram(
     return ddf, future
 
 def main(
-    infile: Path,
+    files_path: Path,
+    features_path: Path,
     cluster: str | None,
     memory: int,
     cores: int,
@@ -165,11 +152,12 @@ def main(
     start_time = time.time()
 
     astrogram(
-        acoustic_features_ddf=dd.read_parquet(infile)
+        files_ddf=dd.read_parquet(files_path)
+        features_ddf=dd.read_parquet(features_path)
         **kwargs,
     )
 
-    log.info(f"Acoustic feature extraction complete")
+    log.info(f"Astrograms complete")
     log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")
 
 def get_base_parser():
@@ -178,10 +166,16 @@ def get_base_parser():
         add_help=False,
     )
     parser.add_argument(
-        '--infile',
+        '--files-path',
         type=lambda p: Path(p).expanduser(),
         default=None,
-        help='File index parquet file'
+        help='File index parquet'
+    )
+    parser.add_argument(
+        '--features-path',
+        type=lambda p: Path(p).expanduser(),
+        default=None,
+        help='Acoustic features parquet'
     )
     parser.add_argument(
         '--outfile',

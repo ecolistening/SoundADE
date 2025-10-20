@@ -158,9 +158,8 @@ def acoustic_evenness_index(
     fmin, fmax = aei_flim
 
     if R_compatible:
-        # seewave compatible AEI requires DC offset on spectrogram with 10 windows across the wav file
+        # seewave compatible AEI removes DC offset and uses a spectrogram with 10 windows
         y = y - np.mean(y)
-        # the FFT is hard-coded for seewave AEI
         S = spectrogram(y, sr, n_fft=sr // 10, hop_length=sr // 10, window=window, pad_mode=pad_mode)
         Sxx, _, freq, _ = S
         return maad.features.acoustic_eveness_index(Sxx, freq, fmin=fmin, fmax=fmax, dB_threshold=db_threshold)
@@ -178,29 +177,21 @@ def bioacoustic_index_soundecology(
     f_max: float,
 ) -> np.float32:
     """
-    Replicates the original implementation for testing purposes:
+    Replicates soundecology implementation for testing purposes:
 
     https://rdrr.io/cran/soundecology/src/R/bioacoust_index.R
 
-    Oddities / errors to note about the soundecology / seewave implementation:
-
     1) Seewave / soundecology drop the upper bin (nyquist) from the spectrogram
-    2) Seewave's meandB function uses an incorrect constant value when computing the mean in decibels
-    3) Soundecology subtracts minimum to account for negative values before integration
+    2) Soundecology subtracts minimum to account for negative values before integration
     """
-    # map to decibels (correctly)
-    S_db = 20 * np.log10(Sxx / Sxx.max())
-    # calculate mean spectrum
-    # NB: seewave error: 'A' should be 20 since the spectrogram is an amplitude spectrogram, see seewave's meandB function
-    A = 10
-    S_mean = A * np.log10(np.mean(10**(S_db / A), axis=1))
-    # extract relevant frequency bins
-    bin_spacing = len(S_mean) / (sr // 2)
-    # NB: soundecology rounds down to drop the nyquist bin
+    # calculate mean power spectrum and map to decibels
+    S_mean_db = 10 * np.log10(np.mean(Sxx**2, axis=1))
+    # extract relevant frequency bins, soundecology rounds down to drop the nyquist bin
+    bin_spacing = len(S_mean_db) / (sr // 2)
     f_min_idx, f_max_idx  = int(f_min * bin_spacing), int(f_max * bin_spacing)
-    S_mean_seg = S_mean[f_min_idx:f_max_idx]
-    # NB: soundecology error: subtract the minimum value to account for negative values (dB): its a bit odd!
-    S_mean_seg_norm = S_mean_seg - S_mean_seg.min()
+    S_mean_seg_db = S_mean_db[f_min_idx:f_max_idx]
+    # subtract the minimum value to account for negative values, its a bit odd!
+    S_mean_seg_norm = S_mean_seg_db - S_mean_seg_db.min()
     return sum(S_mean_seg_norm * bin_spacing)
 
 def bioacoustic_index(

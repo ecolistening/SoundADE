@@ -29,8 +29,6 @@ args <- commandArgs(trailingOnly = TRUE)
 audio_path <- args[1]
 params_path <- args[2]
 output_path <- args[3]
-results_path <- file.path(dirname(output_path), "results")
-dir.create(results_path, recursive = TRUE, showWarnings = FALSE)
 files <- list.files(audio_path, pattern = "\\.wav$", full.names = TRUE)
 
 # load audio parameters
@@ -122,9 +120,6 @@ df <- data.frame(
    acoustic_evenness_index = aeis,
    stringsAsFactors = FALSE
 )
-
-# cleanup
-unlink(results_path, recursive=TRUE)
 
 # persist dataframe
 write_parquet(df, output_path)

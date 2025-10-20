@@ -26,13 +26,11 @@ Features: A list of Feature objects representing all the available audio feature
 """
 import librosa
 import maad
-import maad.sound
-import maad.features
+import maad.sound # NB: maad's submodules need to be imported separately
+import maad.features # NB: maad's submodules need to be imported separately
 import numpy as np
 import pandas as pd
-import soundfile
 
-from itertools import chain
 from findiff import FinDiff
 from numpy.typing import NDArray
 from typing import Any, Tuple

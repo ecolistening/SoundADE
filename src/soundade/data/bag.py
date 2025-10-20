@@ -2,8 +2,8 @@ import itertools
 import logging
 import librosa
 import maad
-import maad.features
-import maad.sound
+import maad.features # NB: maad's submodules need to be imported separately
+import maad.sound # NB: maad's submodules need to be imported separately
 import numpy as np
 import os
 import soundfile

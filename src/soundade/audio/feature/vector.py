@@ -2,7 +2,7 @@ from itertools import chain
 
 import librosa
 import maad
-import maad.sound
+import maad.sound # NB: maad's submodules need to be imported separately
 import numpy as np
 import pandas as pd
 from findiff import FinDiff

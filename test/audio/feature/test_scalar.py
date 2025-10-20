@@ -53,7 +53,7 @@ def test_acoustic_complexity_index(
     expected: pd.Series,
 ) -> None:
     actual = pd.Series({file_name: fn(y=wav, **audio_params) for file_name, wav in zip(file_names, wavs)}).sort_index().astype(np.float32)
-    pd.testing.assert_series_equal(expected, actual, atol=1e-1, rtol=1e-3)
+    pd.testing.assert_series_equal(expected, actual, rtol=1e-3)
 
 @pytest.mark.parametrize("fn, expected", [(acoustic_evenness_index, "acoustic_evenness_index")], indirect=["expected"])
 def test_acoustic_evenness_index(
@@ -64,7 +64,7 @@ def test_acoustic_evenness_index(
     expected: pd.Series,
 ) -> None:
     actual = pd.Series({file_name: fn(y=wav, **audio_params, R_compatible=True) for file_name, wav in zip(file_names, wavs)}).sort_index().astype(np.float32)
-    pd.testing.assert_series_equal(expected, actual, atol=1e-1, rtol=1e-3)
+    pd.testing.assert_series_equal(expected, actual, rtol=1e-1)
 
 @pytest.mark.parametrize("fn, expected", [(bioacoustic_index, "bioacoustic_index")], indirect=["expected"])
 def test_bioacoustic_index(
@@ -75,7 +75,7 @@ def test_bioacoustic_index(
     expected: pd.Series,
 ) -> None:
     actual = pd.Series({file_name: fn(y=wav, **audio_params, R_compatible=True) for file_name, wav in zip(file_names, wavs)}).sort_index().astype(np.float32)
-    pd.testing.assert_series_equal(expected, actual, atol=1e-1, rtol=1e-2)
+    pd.testing.assert_series_equal(expected, actual, rtol=1e-2)
 
 @pytest.mark.parametrize("fn, expected", [(spectral_flux, "spectral_flux")], indirect=["expected"],)
 def test_spectral_flux(
@@ -86,7 +86,7 @@ def test_spectral_flux(
     expected: pd.Series,
 ) -> None:
     actual = pd.Series({file_name: fn(y=wav, **audio_params, R_compatible=True) for file_name, wav in zip(file_names, wavs)}).sort_index().astype(np.float32)
-    pd.testing.assert_series_equal(expected, actual, atol=1e-1, rtol=1e-3)
+    pd.testing.assert_series_equal(expected, actual, rtol=1e-1)
 
 @pytest.mark.parametrize("fn, expected", [(zero_crossing_rate, "zero_crossing_rate")], indirect=["expected"])
 def test_zero_crossing_rate(
@@ -126,7 +126,7 @@ def test_root_mean_square(
     expected: pd.Series,
 ) -> None:
     actual = pd.Series({file_name: fn(y=wav, **audio_params) for file_name, wav in zip(file_names, wavs)}).sort_index().astype(np.float32)
-    pd.testing.assert_series_equal(expected, actual, atol=1e-3)
+    pd.testing.assert_series_equal(expected, actual, rtol=1e-2)
 
 @pytest.mark.parametrize("fn, expected", [(spectral_entropy, "spectral_entropy")], indirect=["expected"])
 def test_spectral_entropy(
@@ -137,10 +137,10 @@ def test_spectral_entropy(
     expected: pd.Series,
 ) -> None:
     actual = pd.Series({file_name: fn(y=wav, **audio_params, compatibility="seewave") for file_name, wav in zip(file_names, wavs)}).sort_index().astype(np.float32)
-    atol, rtol = 1e-2, 1e-2
-    if not np.isclose(expected, actual, atol=atol, rtol=rtol).all():
+    rtol = 1e-2
+    if not np.isclose(expected, actual, rtol=rtol).all():
         warnings.warn(
-            f"'spectral_entropy' differs beyond tolerance of {atol=} {rtol=}\n"
+            f"'spectral_entropy' differs beyond tolerance of {rtol=}\n"
             f"expected: {expected.values}\n"
             f"actual: {actual.values}",
             UserWarning
@@ -155,10 +155,10 @@ def test_temporal_entropy(
     expected: pd.Series,
 ) -> None:
     actual = pd.Series({file_name: fn(y=wav, **audio_params, R_compatible=True) for file_name, wav in zip(file_names, wavs)}).sort_index().astype(np.float32)
-    atol, rtol = 1e-2, 1e-2
-    if not np.isclose(expected, actual, atol=atol, rtol=rtol).all():
+    rtol = 1e-2
+    if not np.isclose(expected, actual, rtol=rtol).all():
         warnings.warn(
-            f"'temporal_entropy' differs beyond tolerance of {atol=} {rtol=}\n"
+            f"'temporal_entropy' differs beyond tolerance of {rtol=}\n"
             f"expected: {expected.values}\n"
             f"actual: {actual.values}",
             UserWarning

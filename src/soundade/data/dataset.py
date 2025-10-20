@@ -16,6 +16,7 @@ log = logging.getLogger(__name__)
 DEFAULT_PARAMS = dict(
     sample_rate=48_000,
     n_fft=2048,
+    frame_length=2048,
     hop_length=1024,
     min_conf=0.0,
     segment_duration=60.0,

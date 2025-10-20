@@ -4,6 +4,7 @@ import datetime as dt
 import logging
 import os
 import pandas as pd
+import shutil
 import time
 
 from dask import config as cfg
@@ -85,7 +86,9 @@ def birdnet_detections(
 
 def main(
     infile: Path,
+    outfile: str | Path,
     sitesfile: Path,
+    config_path: Path,
     cluster: str | None,
     memory: int,
     cores: int,
@@ -143,9 +146,12 @@ def main(
     birdnet_detections(
         files_df=pd.read_parquet(infile),
         sites_df=pd.read_parquet(sitesfile),
+        outfile=outfile,
+        config_path=config_path,
         **kwargs,
     )
 
+    shutil.copy(config_path, outfile.parent / "config.yaml")
     log.info(f"BirdNET detection extraction complete")
     log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")
 

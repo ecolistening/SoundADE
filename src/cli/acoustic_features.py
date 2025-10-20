@@ -6,6 +6,7 @@ import logging
 import numpy as np
 import os
 import pandas as pd
+import shutil
 import time
 
 from dask import config as cfg
@@ -122,6 +123,8 @@ def acoustic_features(
 
 def main(
     infile: Path,
+    outfile: Path,
+    config_path: Path,
     cluster: str | None,
     memory: int,
     cores: int,
@@ -185,8 +188,11 @@ def main(
 
     acoustic_features(
         files_df=pd.read_parquet(infile),
+        outfile=outfile,
+        config_path=config_path,
         **kwargs,
     )
+    shutil.copy(config_path, outfile.parent / "config.yaml")
 
     log.info(f"Acoustic feature extraction complete")
     log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")

@@ -5,6 +5,7 @@ import itertools
 import logging
 import os
 import pandas as pd
+import shutil
 import time
 
 from dask import bag as db
@@ -109,7 +110,9 @@ def index_audio(
     return ddf, future
 
 def main(
-    sitesfile: str | Path | None,
+    out_file: Path,
+    sitesfile: Path | None,
+    config_path: Path,
     memory: int,
     cores: int,
     jobs: int,
@@ -150,8 +153,11 @@ def main(
 
     index_audio(
         sites_ddf=dd.read_parquet(sitesfile),
+        out_file=out_file,
+        config_path=config_path,
         **kwargs,
     )
+    shutil.copy(config_path, out_file.parent / "config.yaml")
 
     log.info(f"File index complete")
     log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")

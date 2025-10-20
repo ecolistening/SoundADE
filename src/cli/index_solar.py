@@ -28,6 +28,20 @@ PYARROW_VERSION = "2.6"
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
+def solar_meta():
+    return pd.DataFrame({
+        "site_id": pd.Series(dtype="string[pyarrow]"),
+        "latitude": pd.Series(dtype="float64"),
+        "longitude": pd.Series(dtype="float64"),
+        "timezone": pd.Series(dtype="string[pyarrow]"),
+        "date": pd.Series(dtype="datetime64[us]"),
+        "dawn": pd.Series(dtype="datetime64[us]"),
+        "sunrise": pd.Series(dtype="datetime64[us]"),
+        "noon": pd.Series(dtype="datetime64[us]"),
+        "sunset": pd.Series(dtype="datetime64[us]"),
+        "dusk": pd.Series(dtype="datetime64[us]"),
+    })
+
 def index_solar(
     files_ddf: dd.DataFrame,
     sites_ddf: dd.DataFrame,
@@ -72,7 +86,7 @@ def index_solar(
         # extract solar information
         .map(find_sun)
         # map to dataframe
-        .to_dataframe()
+        .to_dataframe(meta=solar_meta())
         # extract solar boundaries
         .map_partitions(find_solar_boundaries)
         .astype({"site_id": "string[pyarrow]"})

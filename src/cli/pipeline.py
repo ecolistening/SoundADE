@@ -48,6 +48,8 @@ def pipeline(
     solar_path = save_dir / "solar_table.parquet"
     recording_acoustic_features_path = save_dir / "recording_acoustic_features_table.parquet"
     birdnet_species_probs_path = save_dir / "birdnet_species_probs_table.parquet"
+    # save run parameters in results
+    shutil.copy(config_path, save_dir / "config.yaml")
     # begin timing
     start_time = time.time()
     # index sites

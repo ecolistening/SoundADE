@@ -20,7 +20,7 @@ from soundade.data.bag import (
 )
 from soundade.audio.feature.scalar import Features as ScalarFeatures
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def wavs(file_paths, audio_params) -> List[NDArray]:
     return [librosa.load(file_path, sr=audio_params["sr"])[0] for file_path in file_paths]
 

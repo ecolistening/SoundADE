@@ -1,9 +1,11 @@
 import pytest
 
+import librosa
 import os
 import pathlib
 import yaml
 
+from numpy.typing import NDArray
 from typing import Any, Dict, List
 
 @pytest.fixture(scope="session")
@@ -30,3 +32,6 @@ def file_paths(fixtures_path) -> List[pathlib.Path]:
 def file_names(file_paths) -> List[str]:
     return [p.name for p in file_paths]
 
+@pytest.fixture(scope="session")
+def wavs(file_paths, audio_params) -> List[NDArray]:
+    return [librosa.load(file_path, sr=audio_params["sr"])[0] for file_path in file_paths]

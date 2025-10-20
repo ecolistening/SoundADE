@@ -32,10 +32,6 @@ def extract_features(fixtures_path):
     yield
 
 @pytest.fixture(scope="session")
-def wavs(file_paths, audio_params) -> List[NDArray]:
-    return [librosa.load(file_path, sr=audio_params["sr"])[0] for file_path in file_paths]
-
-@pytest.fixture(scope="session")
 def expected_acoustic_features(fixtures_path) -> pd.DataFrame:
     df = pd.read_parquet(fixtures_path / "seewave_indices.parquet")
     df = df.set_index("file_name").sort_index()

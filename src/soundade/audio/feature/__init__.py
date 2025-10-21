@@ -1,6 +1,5 @@
 from typing import Callable, Dict
 
-
 class Feature:
     '''Encapsulates a feature computation.
 
@@ -16,11 +15,10 @@ class Feature:
         super().__init__()
         self.name = name
         self.function = function
-        self.kwargs = kwargs
+        self.defaults = kwargs
 
     def compute(self, audio, **kwargs):
-        # Update with only the relevant kwargs for this function
-        # self.kwargs.update(dict([(kw, kwargs[kw]) for kw in set(kwargs) & set(self.kwargs)]))
-        self.kwargs.update(kwargs)
-        c = self.function(y=audio, **self.kwargs)
+        defaults = self.defaults.copy()
+        defaults.update(kwargs)
+        c = self.function(y=audio, **defaults)
         return c

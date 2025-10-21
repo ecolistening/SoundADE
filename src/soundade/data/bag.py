@@ -2,8 +2,8 @@ import itertools
 import logging
 import librosa
 import maad
-import maad.features
-import maad.sound
+import maad.features # NB: maad's submodules need to be imported separately
+import maad.sound # NB: maad's submodules need to be imported separately
 import numpy as np
 import os
 import soundfile
@@ -12,11 +12,9 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Iterable, Callable, Tuple
 
-from soundade.audio.feature.scalar import Features as ScalarFeatures
+from soundade.audio.feature.scalar import Features as ScalarFeatures, spectrogram
 from soundade.audio.feature.vector import Features, do_spectrogram
 from soundade.audio.filter import dc_offset
-
-FRAME_LENGTH, HOP_LENGTH = 16000, 4000
 
 logging.basicConfig(level=logging.INFO)
 
@@ -68,21 +66,16 @@ def create_file_load_dictionary(
     audio_dict: Dict[str, Any],
     root_dir: Path,
     seconds: float | None = None,
-    sr: int | None = None,
 ) -> List[Dict[str, Any]]:
     """Create N offset dictonaries for each S length audio segment
 
     :param audio_dict: A dictionary of the form:
            { file_id: str, segment_id: str | int, file_path: str }
     :param seconds: Duration of each audio segment
-    :param sr: Leaving sr as the default None ensures that librosa will load the file at its native sample rate. 
     :return:
     """
     audio_segment_dicts = []
-    duration = librosa.get_duration(
-        path=root_dir / audio_dict["file_path"],
-        sr=sr or audio_dict.get("sr")
-    )
+    duration = librosa.get_duration(path=root_dir / audio_dict["file_path"])
     seconds = duration if seconds == -1 else seconds
     seconds = seconds or duration
     segments = int(duration // seconds)
@@ -134,13 +127,8 @@ def load_audio_from_path(audio_dict: Dict, root_dir: Path, sr: int | None = None
     """
     sr = sr or audio_dict.get("sr")
     try:
-        audio, _ = librosa.load(**{
-            "path": root_dir / audio_dict.get("file_path"),
-            "sr": sr,
-            "mono": True,
-            "offset": audio_dict.get("offset"),
-            "duration": audio_dict.get("duration"),
-        })
+        params = {"sr": sr, "mono": True, "offset": audio_dict.get("offset"), "duration": audio_dict.get("duration")}
+        audio, _ = librosa.load(root_dir / audio_dict.get("file_path"), **params)
         return {
             "file_id": audio_dict.get("file_id"),
             "segment_id": audio_dict.get("segment_id"),
@@ -157,9 +145,9 @@ def load_audio_from_path(audio_dict: Dict, root_dir: Path, sr: int | None = None
 
 def extract_vector_features_from_audio(
     audio_dict: Dict,
-    frame_length: int = FRAME_LENGTH,
-    hop_length: int = HOP_LENGTH,
-    n_fft: int = FRAME_LENGTH,
+    frame_length: int = 16_000,
+    hop_length: int = 4000,
+    n_fft: int = 16_000,
     lim_from_dict: bool = False,
     **kwargs: Any,
 ) -> Dict:
@@ -177,10 +165,11 @@ def extract_vector_features_from_audio(
     data_dict = copy_except_audio(audio_dict)
     # Remove the raw audio, which we don't want anymore
     audio = audio_dict.pop('audio')
-    spectrogram = do_spectrogram(
+    S = spectrogram(
         audio,
-        frame_length=frame_length,
-        hop_length=hop_length
+        audio_dict.get("sr"),
+        n_fft=n_fft,
+        hop_length=hop_length,
     )
     # Update
     data_dict.update({
@@ -189,26 +178,28 @@ def extract_vector_features_from_audio(
         'n_fft': n_fft,
         'feature_length': 0,
     })
+    # FIXME: this looks like legacy code from applying a bandpass filter (see `extract_banded_audio`)
+    # relevant to the AEI and the BI, however scikit-maad handles this internally
     if lim_from_dict:
         kwargs = kwargs | {'flim', (data_dict['low'], data_dict['high'])}
     for feature in Features:
         data_dict[feature.name] = feature.compute(
             audio,
+            sr=audio_dict.get('sr'),
+            S=S,
             frame_length=frame_length,
             hop_length=hop_length,
             n_fft=n_fft,
-            sr=audio_dict.get('sr'),
-            spectrograms=spectrogram,
-            **kwargs
+            **kwargs,
         ).flatten().tolist()
         data_dict['feature_length'] = max(len(data_dict[feature.name]), data_dict['feature_length'])
     return data_dict
 
 def extract_scalar_features_from_audio(
     audio_dict: Dict,
-    frame_length: int = FRAME_LENGTH,
-    hop_length: int = HOP_LENGTH,
-    n_fft: int = FRAME_LENGTH,
+    frame_length: int,
+    hop_length: int,
+    n_fft: int,
     lim_from_dict: bool = False,
     **kwargs: Any,
 ) -> Dict:
@@ -225,25 +216,35 @@ def extract_scalar_features_from_audio(
     # Make sure to copy ALL data from the data dict
     data_dict = copy_except_audio(audio_dict)
     # Remove the raw audio, which we don't want anymore
-    audio = audio_dict.get('audio')
-    # Update
+    audio = audio_dict.get("audio")
+    S = spectrogram(
+        audio,
+        audio_dict.get("sr"),
+        n_fft=n_fft,
+        hop_length=hop_length,
+    )
     data_dict.update({
-        'frame_length': frame_length,
-        'hop_length': hop_length,
-        'n_fft': n_fft,
-        'feature_length': 0,
+        "frame_length": frame_length,
+        "hop_length": hop_length,
+        "n_fft": n_fft,
     })
     if lim_from_dict:
-        kwargs = kwargs | {'flim', (data_dict['low'], data_dict['high'])}
+        kwargs = kwargs | {"flim", (data_dict["low"], data_dict["high"])}
     for feature in ScalarFeatures:
-        comp = feature.compute(audio, frame_length=frame_length, hop_length=hop_length, n_fft=n_fft,
-                               sr=audio_dict.get('sr'), **kwargs)
-        data_dict[feature.name] = comp
+        data_dict[feature.name] = feature.compute(
+            audio,
+            sr=audio_dict.get("sr"),
+            S=S,
+            frame_length=frame_length,
+            hop_length=hop_length,
+            n_fft=n_fft,
+            **kwargs,
+        )
     return data_dict
 
 def log_features(features_dict: Dict, features: Iterable = [], epsilon: float = 1e-8):
     for f in features:
-        features_dict.update({f'log {f}': np.log(np.array(features_dict[f]) + epsilon).tolist()})
+        features_dict.update({f'log {f}': np.log(np.maximum(np.array(features_dict[f]), epsilon)).tolist()})
     return features_dict
 
 def transform_features(features_dict: Dict, transformation: Callable, name='{f}', features: Iterable = []):

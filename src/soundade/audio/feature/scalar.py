@@ -3,7 +3,7 @@ This module contains functions for computing various audio features.
 
 Functions:
 - spectral_flux: Compute the spectral flux of an audio signal.
-- __spectrogram: Compute the spectrogram of an audio signal.
+- spectrogram: Compute the spectrogram of an audio signal.
 - zero_crossing_rate: Compute the zero crossing rate of an audio signal.
 - spectral_centroid: Compute the spectral centroid of an audio signal.
 - root_mean_square: Compute the root mean square of an audio signal.
@@ -24,160 +24,253 @@ Variables:
 
 Features: A list of Feature objects representing all the available audio features.
 """
-from itertools import chain
 import librosa
 import maad
+import maad.sound # NB: maad's submodules need to be imported separately
+import maad.features # NB: maad's submodules need to be imported separately
 import numpy as np
 import pandas as pd
-import soundfile
+
 from findiff import FinDiff
+from numpy.typing import NDArray
+from typing import Any, Tuple
 
 from soundade.audio.feature import Feature
 
+def spectrogram(
+    y: NDArray,
+    sr: int,
+    hop_length: int,
+    n_fft: int,
+    pad_mode: str = None,
+    window: str = "hann",
+    **kwargs: Any,
+) -> Tuple[NDArray, NDArray, NDArray, NDArray]:
+    if pad_mode is not None:
+        y = np.pad(y, pad_width=n_fft // 2, mode=pad_mode)
+    Sxx, tn, fn, extent = maad.sound.spectrogram(
+        y,
+        sr,
+        nperseg=n_fft,
+        noverlap=n_fft - hop_length,
+        mode="complex",
+        window=window,
+    )
+    return np.abs(Sxx), tn, fn, extent
 
-def spectral_flux(y=None, sr=48000, S=None, n_fft=2048, hop_length=512, use_finite_difference=True,
-                  **kwargs):  # , sr=22050, S=None, n_fft=2048, hop_length=512, freq=None, win_length=None, window='hann', center=True, pad_mode='constant')
-    # Compute spectrogram
-    # D = librosa.stft(y=y, n_fft=n_fft, hop_length=hop_length, )  # STFT of y
-    # D_mag, _ = librosa.magphase(D)
+def spectral_flux(
+    y: NDArray | None = None,
+    S: Tuple[NDArray, NDArray, NDArray, NDArray] | None = None,
+    sr: int | None = None,
+    R_compatible: bool = False,
+    **kwargs: Any,
+) -> np.float32:
+    assert (y is not None and sr is not None) or (S is not None)
 
     if S is None:
-        # noverlap = n_fft - hop_length
-        S, tf, fn, extent = maad.sound.spectrogram(np.pad(y, pad_width=n_fft // 2, mode='constant'), sr, nperseg=n_fft,
-                                                   noverlap=n_fft - hop_length, mode='amplitude')
-        # S, _ = librosa.magphase(Sxx)
+        S = spectrogram(y, sr, **kwargs)
+    Sxx, _, fn, _ = S
+    Sxx_pow = Sxx ** 2
 
-    # Normalize, column-wise
-    S = np.subtract(S, S.min(axis=0).reshape(1, -1))  # Subtract min
-    S = np.divide(S, S.max(axis=0).reshape(1, -1))
+    Z = Sxx_pow / Sxx_pow.sum(axis=0)
 
-    if not use_finite_difference:
-        diff = S[:, 1:] - S[:, :-1]
+    if R_compatible:
+        diff = Z[:, 1:] - Z[:, :-1]
+        flux = np.linalg.norm(diff, ord=2, axis=0)
+        flux = np.insert(flux, 0, 0)
     else:
         dx = FinDiff(1, 1)
-        diff = dx(S)
+        diff = dx(Z)
+        flux = np.linalg.norm(diff, ord=2, axis=0)
 
-    dist = np.linalg.norm(diff, axis=0)
+    return np.mean(flux)
 
-    return np.mean(dist)
+def zero_crossing_rate(
+    y: NDArray | None = None,
+    frame_length: int | None = None,
+    hop_length: int | None = None,
+    center: bool = True,
+    **kwargs: Any,
+) -> np.float32:
+    assert y is not None
+    zcr = librosa.feature.zero_crossing_rate(y, frame_length=frame_length, hop_length=hop_length, center=center)
+    return np.mean(zcr)
 
+def spectral_centroid(
+    y: NDArray = None,
+    S: Tuple[NDArray, NDArray, NDArray, NDArray] = None,
+    sr: int | None = None,
+    n_fft: int | None = None,
+    hop_length: int | None = None,
+    window: str | None = None,
+    pad_mode: str | None = None,
+    **kwargs: Any,
+) -> np.float32:
+    assert (y is not None and sr is not None) or (S is not None and freq is not None)
 
-# FIXME: BIG NOTE: frame, hop and n_fft parameters are ignored ENTIRELY in the scalar features when this spectrogram function is used.
-def __spectrogram(y=None, frame_length=2048, hop_length=512, pad_mode='constant', spec_mode='amplitude', sr=48000,
-                  nperseg=1024, noverlap=None, **kwargs):
-    return maad.sound.spectrogram(y, sr, nperseg=nperseg, noverlap=noverlap, mode=spec_mode)
+    if S is None:
+        S = spectrogram(y, sr, n_fft=n_fft, hop_length=hop_length, window=window, pad_mode=pad_mode)
+    Sxx, _, freq, _ = S
 
+    sc = librosa.feature.spectral_centroid(S=Sxx, freq=freq)
+    return np.mean(sc)
 
-def zero_crossing_rate(y, frame_length=2048, hop_length=512, center=True, **kwargs):
-    return np.mean(
-        librosa.feature.zero_crossing_rate(y, frame_length=frame_length, hop_length=hop_length, center=center))
+def root_mean_square(
+    y: NDArray = None,
+    S: Tuple[NDArray, NDArray, NDArray, NDArray] = None,
+    sr: int | None = None,
+    frame_length: int | None = None,
+    n_fft: int | None = None,
+    hop_length: int | None = None,
+    window: str | None = None,
+    pad_mode: str | None = None,
+    center: bool = True,
+    **kwargs: Any,
+) -> np.float32:
+    assert (y is not None and sr is not None) or (S is not None)
 
+    if S is None:
+        S = spectrogram(y, sr, n_fft=n_fft, hop_length=hop_length, window=window, pad_mode=pad_mode)
+    Sxx, _, _, _ = S
 
-def spectral_centroid(y=None, sr=48000, S=None, n_fft=2048, hop_length=512, freq=None, win_length=None, window='hann',
-                      center=True, pad_mode='constant', **kwargs):
-    return np.mean(librosa.feature.spectral_centroid(y=y, sr=sr, S=S, n_fft=n_fft, hop_length=hop_length, freq=freq,
-                                                     win_length=win_length, window=window, center=center,
-                                                     pad_mode=pad_mode))
+    rms = librosa.feature.rms(y=y, S=S, hop_length=hop_length, frame_length=frame_length, center=center)
+    return np.mean(rms)
 
+def acoustic_evenness_index(
+    y: NDArray | None = None,
+    S: Tuple[NDArray, NDArray, NDArray, NDArray] = None,
+    sr: int | None = None,
+    n_fft: int | None = None,
+    hop_length: int | None = None,
+    window: str | None = None,
+    pad_mode: str | None = None,
+    aei_flim: Tuple[int, int] = (0, 20_000),
+    bin_step: int | None = None,
+    db_threshold: int | None = None,
+    R_compatible: bool = False,
+    **kwargs: Any,
+) -> np.float32:
+    assert (y is not None and sr is not None) or (S is not None)
+    assert (aei_flim is not None and bin_step is not None and db_threshold is not None)
 
-def root_mean_square(y=None, S=None, frame_length=2048, hop_length=512, center=True, pad_mode='constant', **kwargs):
-    return np.mean(librosa.feature.rms(y=y, S=S, frame_length=frame_length, hop_length=hop_length, center=center,
-                                       pad_mode=pad_mode))
+    fmin, fmax = aei_flim
 
+    if R_compatible:
+        # seewave compatible AEI removes DC offset and uses a spectrogram with 10 windows
+        y = y - np.mean(y)
+        S = spectrogram(y, sr, n_fft=sr // 10, hop_length=sr // 10, window=window, pad_mode=pad_mode)
+        Sxx, _, freq, _ = S
+        return maad.features.acoustic_eveness_index(Sxx, freq, fmin=fmin, fmax=fmax, dB_threshold=db_threshold)
 
-def acoustic_evenness_index(y=None, flim=(0, 20000), spectrograms=None, frame_length=2048, hop_length=512,
-                            mode='constant', sr=48000, nperseg=1024, noverlap=None, **kwargs):
-    assert (y is not None) or (spectrograms is not None)
+    if S is None:
+        S = spectrogram(y, sr, n_fft=n_fft, hop_length=hop_length, window=window, pad_mode=pad_mode)
+    Sxx, _, freq, _ = S
 
-    fmin, fmax = flim
+    return maad.features.acoustic_eveness_index(Sxx, freq, fmin=fmin, fmax=fmax, bin_step=bin_step, dB_threshold=db_threshold)
 
-    if spectrograms is None:
-        spectrograms = __spectrogram(y, frame_length, hop_length, pad_mode=mode, sr=sr, nperseg=nperseg,
-                                     noverlap=noverlap)
+def bioacoustic_index_soundecology(
+    Sxx: NDArray,
+    sr: int,
+    f_min: float,
+    f_max: float,
+) -> np.float32:
+    """
+    Replicates soundecology implementation for testing purposes:
 
-    Sxx, _, fn, _ = spectrograms
+    https://rdrr.io/cran/soundecology/src/R/bioacoust_index.R
 
-    return maad.features.acoustic_eveness_index(Sxx, fn, fmin=fmin, fmax=fmax)
+    1) Seewave / soundecology drop the upper bin (nyquist) from the spectrogram
+    2) Soundecology subtracts minimum to account for negative values before integration
+    """
+    # calculate mean power spectrum and map to decibels
+    S_mean_db = 10 * np.log10(np.mean(Sxx**2, axis=1))
+    # extract relevant frequency bins, soundecology rounds down to drop the nyquist bin
+    bin_spacing = len(S_mean_db) / (sr // 2)
+    f_min_idx, f_max_idx  = int(f_min * bin_spacing), int(f_max * bin_spacing)
+    S_mean_seg_db = S_mean_db[f_min_idx:f_max_idx]
+    # subtract the minimum value to account for negative values, its a bit odd!
+    S_mean_seg_norm = S_mean_seg_db - S_mean_seg_db.min()
+    return sum(S_mean_seg_norm * bin_spacing)
 
+def bioacoustic_index(
+    y: NDArray | None = None,
+    S: Tuple[NDArray, NDArray, NDArray, NDArray] = None,
+    sr: int | None = None,
+    n_fft: int | None = None,
+    hop_length: int | None = None,
+    window: str | None = None,
+    pad_mode: str | None = None,
+    bi_flim: Tuple[int, int] | None = (2000, 15_000),
+    R_compatible: bool = False,
+    **kwargs: Any,
+) -> np.float32:
+    assert (y is not None and sr is not None) or (S is not None)
 
-def bioacoustic_index(y=None, flim=(2000, 15000), spectrograms=None, frame_length=2048, hop_length=512, mode='constant',
-                      sr=48000, nperseg=1024, noverlap=None, **kwargs):
-    assert (y is not None) or (spectrograms is not None)
+    if S is None:
+        S = spectrogram(y, sr, n_fft=n_fft, hop_length=hop_length, window=window, pad_mode=pad_mode)
+    Sxx, _, fn, _ = S
 
-    if spectrograms is None:
-        spectrograms = __spectrogram(y, frame_length, hop_length, pad_mode=mode, sr=sr, nperseg=nperseg,
-                                     noverlap=noverlap)
+    fmin, fmax = bi_flim
+    fmax = min(fmax, sr // 2)
 
-    Sxx, _, fn, _ = spectrograms
+    if R_compatible:
+        return bioacoustic_index_soundecology(Sxx, sr, f_min=fmin, f_max=fmax)
+    else:
+        return maad.features.bioacoustics_index(Sxx, fn, flim=(fmin, fmax))
 
-    return maad.features.bioacoustics_index(Sxx, fn, flim)
+def acoustic_complexity_index(
+    y: NDArray | None = None,
+    S: Tuple[NDArray, NDArray, NDArray, NDArray] = None,
+    sr: int | None = None,
+    n_fft: int | None = None,
+    hop_length: int | None = None,
+    window: str | None = None,
+    pad_mode: str | None = None,
+    **kwargs: Any,
+) -> np.float32:
+    assert (y is not None and sr is not None) or (S is not None)
 
+    if S is None:
+        S = spectrogram(y, sr, n_fft=n_fft, hop_length=hop_length, window=window, pad_mode=pad_mode)
+    Sxx, _, fn, _ = S
 
-def acoustic_complexity_index(y=None, spectrograms=None, frame_length=2048, hop_length=512, mode='constant', sr=48000,
-                              nperseg=1024, noverlap=None, **kwargs):
-    assert (y is not None) or (spectrograms is not None)
+    ACI_xx, ACI_per_bin, ACI_sum = maad.features.acoustic_complexity_index(Sxx)
+    return ACI_sum
 
-    if spectrograms is None:
-        spectrograms = __spectrogram(y, frame_length, hop_length, pad_mode=mode, sr=sr, nperseg=nperseg,
-                                     noverlap=noverlap)
+def spectral_entropy(
+    y: NDArray | None = None,
+    sr: int | None = None,
+    n_fft: int | None = None,
+    hop_length: int | None = None,
+    window: str | None = None,
+    pad_mode: str | None = None,
+    compatibility: str = "QUT",
+    **kwargs: Any,
+) -> np.float32:
+    assert y is not None and sr is not None
+    S, freq = maad.sound.spectrum(y, sr, nperseg=n_fft, noverlap=n_fft - hop_length, nfft=n_fft, window=window, scaling="density")
+    Hf, _ = maad.features.frequency_entropy(S, compatibility=compatibility)
+    return Hf
 
-    Sxx, _, fn, _ = spectrograms
+def temporal_entropy(
+    y: NDArray | None = None,
+    frame_length: int | None = None,
+    compatibility: str = "QUT",
+    mode: str = "fast",
+    **kwargs: Any,
+) -> np.float32:
+    assert y is not None and frame_length is not None
+    Ht = maad.features.temporal_entropy(y, Nt=frame_length, compatibility=compatibility, mode=mode)
+    return Ht
 
-    return maad.features.acoustic_complexity_index(Sxx)[2]
-
-
-def spectral_entropy(y=None, power_spectrograms=None, frame_length=2048, hop_length=512, mode='constant', sr=48000,
-                     nperseg=1024, noverlap=None, **kwargs):
-    assert (y is not None) or (power_spectrograms is not None)
-
-    if power_spectrograms is None:
-        # Requires the power spectrogram, so compute it here.
-        power_spectrograms = __spectrogram(y, frame_length, hop_length, pad_mode=mode, spec_mode='psd', sr=sr,
-                                           nperseg=nperseg, noverlap=noverlap)
-
-    Sxx_power, _, _, _ = power_spectrograms
-
-    return maad.features.frequency_entropy(Sxx_power)[0]
-
-
-def temporal_entropy(y=None, Nt=512, frame_length=2048, hop_length=512, mode='constant', **kwargs):
-    assert (y is not None)
-
-    return maad.features.temporal_entropy(y, Nt=Nt)
-
-
-FRAME_LENGTH, HOP_LENGTH = 2048, 512
-# TODO THIS IS BAD. Don't hardcode this.
-SAMPLING_RATE = 48000
-
-frame_hop_dict = {'n_fft': FRAME_LENGTH, 'frame_length': FRAME_LENGTH, 'hop_length': HOP_LENGTH}
-zcr = Feature('zero crossing rate', zero_crossing_rate, **frame_hop_dict)
-sc = Feature('spectral centroid', spectral_centroid, sr=SAMPLING_RATE, **frame_hop_dict)  # TODO Wrong sampling rate
-rms = Feature('root mean square', root_mean_square, **frame_hop_dict)
-sf = Feature('spectral flux', spectral_flux, **frame_hop_dict)
-aei = Feature('acoustic evenness index', acoustic_evenness_index, **frame_hop_dict)
-bi = Feature('bioacoustic index', bioacoustic_index, **frame_hop_dict)
-aci = Feature('acoustic complexity index', acoustic_complexity_index, **frame_hop_dict)
-hf = Feature('spectral entropy', spectral_entropy, **frame_hop_dict)
-ht = Feature('temporal entropy', temporal_entropy, **frame_hop_dict)
-# TODO This should be a factory that takes parameters
-Features = [zcr, sc, rms, sf, aei, bi, aci, hf, ht]
-
-
-def extract_all(f, frame_length=FRAME_LENGTH, hop_length=HOP_LENGTH, mode='constant', nperseg=1024,
-                noverlap=None, **kwargs):
-    audio, sr = soundfile.read(f)
-
-    spectrograms = __spectrogram(y=audio, frame_length=frame_length, hop_length=hop_length, pad_mode=mode, sr=sr,
-                                 nperseg=nperseg, noverlap=noverlap, **kwargs)
-
-    features = []
-    for feature in Features:
-        comp = feature.compute(audio, spectrograms=spectrograms, frame_length=frame_length, hop_length=hop_length,
-                               pad_mode=mode, sr=sr, nperseg=nperseg, noverlap=noverlap, **kwargs)
-        # comp = feature.compute(audio, **kwargs)
-        row = dict(zip(chain(['file', 'feature', 'path'], [str(i) for i in range(comp.size)]),
-                       chain([f.name, feature.name, str(f.parent), *comp.flatten().tolist()])))
-        features.append(row)
-
-    return pd.DataFrame(features)
+Features = [
+    Feature('zero crossing rate', zero_crossing_rate, center=True),
+    Feature('spectral centroid', spectral_centroid),
+    Feature('root mean square', root_mean_square, pad_mode="constant"),
+    Feature('spectral flux', spectral_flux, pad_mode="constant"),
+    Feature('acoustic evenness index', acoustic_evenness_index),
+    Feature('bioacoustic index', bioacoustic_index),
+    Feature('acoustic complexity index', acoustic_complexity_index),
+    Feature('spectral entropy', spectral_entropy),
+    Feature('temporal entropy', temporal_entropy),
+]

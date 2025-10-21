@@ -120,10 +120,10 @@ def embed(
         model: string,
         start_time: float64,
         end_time: float64,
-        0: string,
-        2: string,
+        0: float64,
+        2: float64,
         ...
-        1023: string,
+        1023: float64,
     }
     """
     # lazy load analyzer on worker process (cached globally)

@@ -4,9 +4,9 @@ version="0.0.1"
 description="soundade library files"
 readme="README.md"
 authors=[
-    {name = "David Kadish", email = "david.kadish@mau.se"},
     {name = "Nicolas Seymour-Smith", email = "nrs23@sussex.ac.uk"},
     {name = "Kieran Gibb", email = "k.a.gibb@sussex.ac.uk"},
+    {name = "David Kadish", email = "david.kadish@mau.se"},
 ]
 requires-python = ">=3.10"
 dependencies = [
@@ -88,3 +88,12 @@ dependencies = [
     "zict==3.0.0",
     "zipp==3.23.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["src/test"]

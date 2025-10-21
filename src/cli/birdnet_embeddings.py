@@ -126,13 +126,17 @@ def main(
 
     start_time = time.time()
 
-    birdnet_embeddings(
+    _, future = birdnet_embeddings(
         pd.read_parquet(infile),
         pd.read_parquet(sitesfile),
         **kwargs,
     )
+    dask.compute(future)
 
+    log.info(f"BirdNET embeddings extracted")
     log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")
+
+    client.close()
 
 def get_base_parser():
     parser = DaskArgumentParser(

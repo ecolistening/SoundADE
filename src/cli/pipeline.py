@@ -50,8 +50,6 @@ def pipeline(
     birdnet_species_probs_path = save_dir / "birdnet_species_probs_table.parquet"
     # save run parameters in results
     shutil.copy(config_path, save_dir / "config.yaml")
-    # begin timing
-    start_time = time.time()
     # index sites
     log.info(f"Processing site information")
     sites_df = index_sites(
@@ -122,11 +120,7 @@ def pipeline(
         )
         futures.append(birdnet_species_future)
     # compute the graph
-    log.info(f"Processing...")
-    dask.compute(*futures)
-    # and we're done!
-    log.info("Pipeline complete")
-    log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")
+    return futures
 
 def main(
     cluster: str | None,
@@ -160,7 +154,15 @@ def main(
         )
         log.info(client)
 
-    pipeline(**kwargs)
+    start_time = time.time()
+
+    futures = pipeline(**kwargs)
+    dask.compute(*futures)
+
+    log.info("Pipeline complete")
+    log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")
+
+    client.close()
 
 def get_base_parser():
     parser = DaskArgumentParser(

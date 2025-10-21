@@ -49,7 +49,6 @@ def index_solar(
     outfile: str | Path,
     partition_size: int = None,
     npartitions: int = None,
-    compute: bool = True,
 ) -> Tuple[dd.DataFrame | pd.DataFrame, dd.DataFrame | pd.DataFrame, dd.Scalar | None, dd.Scalar | None]:
     assert sites_ddf is not None, "Site-specific information (latitude / longitude) is required to extract solar data. See instructions in the README."
 
@@ -147,7 +146,6 @@ def main(
     npartitions: int | None = None,
     local: bool = True,
     threads_per_worker: int = 1,
-    compute: bool = False,
     debug: bool = False,
     **kwargs
 ) -> None:
@@ -162,7 +160,6 @@ def main(
         cores (int, optional): Number of CPU cores to use for the computation.
         jobs (int, optional): Number of parallel jobs to run.
         local (bool, optional): Flag indicating whether to use a local cluster for computation.
-        compute (bool, optional): Flag indicating whether to persist parquet eagerly. Defaults to false.
         debug (bool, optional): Flag indicating whether to run synchronously. Defaults to false.
 
     Returns:
@@ -194,17 +191,20 @@ def main(
 
     start_time = time.time()
 
-    index_solar(
+    _, _, solar_future, files_future = index_solar(
         files_ddf=dd.read_parquet(infile),
         sites_ddf=dd.read_parquet(sitesfile),
+        # FIXME: there's a bug here where we'll end up with duplicates in the files table
         infile=infile,
         outfile=outfile,
         npartitions=npartitions,
-        compute=compute,
     )
+    dask.compute(solar_future, files_future)
 
     log.info(f"Solar index complete")
     log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")
+
+    client.close()
 
 def get_base_parser():
     parser = DaskArgumentParser(
@@ -221,12 +221,6 @@ def get_base_parser():
         '--save-preprocessed',
         default=None,
         help='Save the preprocessed files to directory.'
-    )
-    parser.add_argument(
-        '--compute',
-        default=False,
-        action='store_true',
-        help='Aggregate the dataframe in memory before saving to parquet.'
     )
     parser.add_argument(
         '--debug',

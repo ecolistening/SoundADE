@@ -127,13 +127,8 @@ def load_audio_from_path(audio_dict: Dict, root_dir: Path, sr: int | None = None
     """
     sr = sr or audio_dict.get("sr")
     try:
-        audio, _ = librosa.load(**{
-            "path": root_dir / audio_dict.get("file_path"),
-            "sr": sr,
-            "mono": True,
-            "offset": audio_dict.get("offset"),
-            "duration": audio_dict.get("duration"),
-        })
+        params = {"sr": sr, "mono": True, "offset": audio_dict.get("offset"), "duration": audio_dict.get("duration")}
+        audio, _ = librosa.load(root_dir / audio_dict.get("file_path"), **params)
         return {
             "file_id": audio_dict.get("file_id"),
             "segment_id": audio_dict.get("segment_id"),

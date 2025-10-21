@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
 import pandas as pd
+import itertools
 import librosa
 import warnings
 
@@ -32,6 +33,7 @@ def test_valid_audio_file(fixtures_path, file_paths):
     result = valid_audio_file(file_paths[0])
     assert result.get("valid") == True
     assert result.get("duration") == 60
+
     assert result.get("sr") == 48_000
     assert result.get("channels") == 1
 
@@ -58,17 +60,17 @@ def test_copy_except_audio():
     assert result.get("other_column") == "does matter", "Failed to copy other columns"
 
 def test_create_file_load_dictionary(file_paths, audio_params):
-    seconds = 20
-    for file_path in file_paths:
+    durations = [5, 20, 60]
+    for duration, file_path in itertools.product(durations, file_paths):
         segment_dicts = create_file_load_dictionary(
             {"file_path": file_path.name},
             root_dir=file_path.parent,
-            seconds=seconds,
+            seconds=duration,
         )
-        assert len(segment_dicts) == int(librosa.get_duration(path=file_path) / seconds)
+        assert len(segment_dicts) == int(librosa.get_duration(path=file_path) / duration), "Incorrect number of audio segments"
         for i, segment_dict in enumerate(segment_dicts):
-            assert segment_dict.get("offset") == seconds * i, "Audio offset is incorrect"
-            assert segment_dict.get("duration") == seconds, "Audio duration is incorrect"
+            assert segment_dict.get("offset") == duration * i, "Audio offset is incorrect"
+            assert segment_dict.get("duration") == duration, "Audio duration is incorrect"
 
 def test_remove_dc_offset(wavs):
     wav = wavs[0]
@@ -76,17 +78,18 @@ def test_remove_dc_offset(wavs):
     np.testing.assert_array_equal(result.get("audio"), wav - wav.mean(), err_msg="DC offset incorrect")
 
 def test_load_audio_from_path(file_paths, audio_params):
-    sr = audio_params["sr"]
-    for file_path in file_paths:
+    srs = [8000, 24000, 48000]
+    durations = [5, 20, 60]
+    for sr, duration, file_path in itertools.product(srs, durations, file_paths):
         audio_dict = load_audio_from_path(
-            {"file_path": file_path.name, "offset": 0, "seconds": 60},
+            {"file_path": file_path.name, "offset": 0, "duration": duration},
             root_dir=file_path.parent,
             sr=sr,
         )
         assert "offset" in audio_dict, "Audio offset was not returned"
         assert "duration" in audio_dict, "Audio duration was not returned"
         assert type(audio_dict.get("audio")) == np.ndarray, "Audio was not loaded"
-        assert audio_dict.get("audio").shape[0] == sr * 60, "Audio was not loaded at specified sample rate"
+        assert audio_dict.get("audio").shape[0] == sr * duration, "Audio was not loaded at specified sample rate"
 
 def test_extract_scalar_features_from_audio(file_paths, wavs, audio_params):
     sr = audio_params.pop("sr")

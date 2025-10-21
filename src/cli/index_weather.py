@@ -110,6 +110,15 @@ def index_weather(
     save_dir: Path,
     **kwargs: Any,
 ) -> None:
+    assert sites_df is not None, "Site-specific information (latitude / longitude) is required to extract weather data. See instructions in the README."
+
+    if sites_df.index.name == "site_id":
+        sites_df = sites_df.reset_index()
+
+    assert "site_id" in sites_df.columns, f"'site_id' must be available in the sites table"
+    assert "latitude" in sites_df.columns, f"'latitude' must be available in the sites table"
+    assert "longitude" in sites_df.columns, f"'longitude' must be available in the sites table"
+
     log.info("Fetching weather data from open meteo")
     df = (
         files_df[["site_id", "timestamp"]]

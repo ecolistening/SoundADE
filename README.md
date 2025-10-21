@@ -1,7 +1,18 @@
 # SoundADE
-Acoustic Descriptor Extraction tool for processing sound on High Performance Computing clusters
+Acoustic Descriptor Extraction tool for processing sound on High Performance Computing clusters.
+
+SoundADE will recursively identify audio files within a directory structure and read these for processing by the pipeline. The pipeline will then compute a set of acoustic descriptors, pull out BirdNET species detection probabilities. If site-level information such as latitude, longitude and timezone are provided as a separate sites file, these will be used to extract solar and weather data.
 
 ## Installation
+
+### Python
+Install `uv` package. You can then bundle dependencies. Finally you can run the test suite, and the different parts of the pipeline either independently or as a whole using the CLI.
+
+```
+uv sync --locked
+uv run pytest -v
+uv run main.py --help
+```
 
 ### Docker
 Install `docker-ce` package. You can then build and run the full pipeline using:
@@ -39,6 +50,9 @@ Run the whole pipeline, specifying the relevant option depending on your setup c
 ./run.sh
 ```
 
+### Configuration
+Create your own custom dataset config file (see examples in `./config`). This is where you should specify FFT and BirdNET parameters. Default parameters for the FFT and BirdNET will be set by the pipeline if none are specified, however you need to specify a means for the pipeline to extract information from the file paths, such as `timestamp` and site-level information in the form of a regular expression. You can specify additional site-level information, see [below](#location-information) for more details.
+
 ## Environment Variables
 `.env` contains run time settings for the pipeline:
 
@@ -46,13 +60,6 @@ Run the whole pipeline, specifying the relevant option depending on your setup c
 - `SAVE_PATH`: the path to where you want the results saved. Your `locations.parquet` file must be in this location. For more details on the `locations.parquet` see below.
 - `CORES`: the number of cores (local) or jobs (HPC) to be deployed to process your data
 - `MEM_PER_CPU`: the integer number of gigabytes of RAM deployed *per core or job*
-- `DATASET`: must map to the name of a dataset class in `src/soundade/datasets`.
-- `SAMPLE_RATE`: a resample rate for the audio. If comparable features are desired across different sample rates, you should resample to the minimum sample rate in your dataset.
-- `FRAME`: the number of samples used for computing a frame for certain audio features e.g. zero crossing rate.
-- `HOP`: the hop size used for the FFT for audio features derived from the spectrogram, e.g. spectral centroid.
-- `N_FFT`: the number of samples per FFT window, determining the time-frequency resolution for audio features derived from the spectrogram.
-- `MIN_CONF`: a threshold value for BirdNET species detection probabilities. Detections below this threshold are ignored. Defaults to 0.0.
-- `SEGMENT_LEN`: for longer audio files, we first chunk the audio into segments. Defaults to 60s. Features are then calculated over each segment independently.
 
 ### Location Information
 A regular expression is required to find and extract audio files along with their location information. See `./config` for examples.
@@ -97,3 +104,12 @@ The `site_name` variable should match `/<site_level_1>/<site_level_2>/<site_leve
 
 In this case `<site_level_1>` is the country (EC = Ecuador), `<site_level_2>` is a site identifier (TE), and `<site_level_3>` is a recorder ID number. Therefore the `site_name` column must contain records `'/EC/TE/9'` for `'/EC/TE/10'`. The depth for the site level is arbitrary, you can define as many as you like in the regular expression for discovering audio files.
 
+## Tests
+Run the test suite:
+
+```
+uv run pytest -v
+```
+
+## Development
+If you want to make a contribution to the codebase, please correspond with the package creators specified in the `pyproject.toml`.

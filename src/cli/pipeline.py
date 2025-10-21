@@ -4,6 +4,7 @@ import datetime as dt
 import logging
 import os
 import pandas as pd
+import shutil
 import time
 
 from dask import bag as db
@@ -14,7 +15,6 @@ from pathlib import Path
 from typing import Any, Tuple
 
 from soundade.hpc.arguments import DaskArgumentParser
-from soundade.datasets import datasets
 
 from cli.index_sites import index_sites
 from cli.index_audio import index_audio
@@ -27,95 +27,103 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 def pipeline(
-    root_dir: str | Path,
-    save_dir: str | Path,
-    sitesfile: str | Path | None,
-    dataset: str,
-    sample_rate: int,
-    segment_duration: float,
-    frame: int,
-    hop: int,
-    n_fft: int,
+    root_dir: Path,
+    config_path: Path,
+    save_dir: Path,
+    sitesfile: Path | None,
     high_pass_filter: int,
     dc_correction: int,
-    min_conf: float,
     partition_size: int = None,
     npartitions: int = None,
+    no_birdnet: bool = False,
+    no_indices: bool = False,
     **kwargs: Any,
-) -> Tuple[dd.DataFrame, dd.Scalar] | pd.DataFrame:
-    # ensure dataset class for parsing relevant information has been setup
-    assert dataset in datasets, f"Unsupported dataset '{dataset}'"
+) -> None:
     # setup data sinks
     save_dir = save_dir.expanduser()
     save_dir.mkdir(exist_ok=True, parents=True)
     sites_path = sitesfile or save_dir / "locations_table.parquet"
+    tmp_files_path = save_dir / "files_table.tmp.parquet"
     files_path = save_dir / "files_table.parquet"
     solar_path = save_dir / "solar_table.parquet"
     recording_acoustic_features_path = save_dir / "recording_acoustic_features_table.parquet"
     birdnet_species_probs_path = save_dir / "birdnet_species_probs_table.parquet"
+    # save run parameters in results
+    shutil.copy(config_path, save_dir / "config.yaml")
     # begin timing
     start_time = time.time()
     # index sites
-    # NB: this just resaves the parquet file and is effectively redundant
-    # however is left there incase custom behaviour by dataset is required
     log.info(f"Processing site information")
     sites_df = index_sites(
         root_dir=root_dir,
+        config_path=config_path,
         out_file=sites_path,
-        dataset=dataset,
     )
+    # tolerant to missing sites file
+    sites_ddf = dd.from_pandas(sites_df) if sites_df is not None else None
     # index files
     log.info(f"Indexing audio files")
     files_df, _ = index_audio(
         root_dir=root_dir,
-        out_file=files_path,
-        sites_ddf=dd.from_pandas(sites_df),
-        dataset=dataset,
+        config_path=config_path,
+        out_file=tmp_files_path,
+        sites_ddf=sites_ddf,
         compute=True,
     )
     # index site-specific information
-    log.info(f"Indexing solar times")
-    index_solar(
-        files_ddf=dd.from_pandas(files_df),
-        sites_ddf=dd.from_pandas(sites_df),
-        infile=files_path,
-        outfile=solar_path,
-        compute=True,
-    )
-    log.info(f"Indexing weather data")
-    index_weather(
-        files_df=files_df,
-        sites_df=sites_df,
-        save_dir=save_dir,
-    )
+    if sites_ddf is not None:
+        log.info(f"Indexing solar times")
+        index_solar(
+            files_ddf=dd.from_pandas(files_df),
+            sites_ddf=sites_ddf,
+            infile=files_path,
+            outfile=solar_path,
+            compute=True,
+        )
+    else:
+        # ensure files index is saved in the correct location
+        shutil.copytree(tmp_files_path, files_path)
+    # cleanup old files table
+    log.info(f"Final file index saved at {files_path}")
+    log.info(f"Removing temp file index {tmp_files_path}")
+    shutil.rmtree(tmp_files_path)
+    # index weather data
+    if sites_ddf is not None:
+        log.info(f"Indexing weather data")
+        index_weather(
+            files_df=files_df,
+            sites_df=sites_df,
+            save_dir=save_dir,
+        )
     # extract acoustic featres
-    log.info(f"Extracting acoustic features")
-    acoustic_features_ddf, acoustic_features_future = acoustic_features(
-        root_dir=root_dir,
-        files_df=files_df,
-        outfile=recording_acoustic_features_path,
-        sample_rate=sample_rate,
-        frame=frame,
-        hop=hop,
-        n_fft=n_fft,
-        segment_duration=segment_duration,
-        high_pass_filter=high_pass_filter,
-        dc_correction=dc_correction,
-        compute=False,
-    )
+    futures = []
+    if not no_indices:
+        log.info(f"Extracting acoustic features")
+        acoustic_features_ddf, acoustic_features_future = acoustic_features(
+            root_dir=root_dir,
+            config_path=config_path,
+            files_df=files_df,
+            outfile=recording_acoustic_features_path,
+            high_pass_filter=high_pass_filter,
+            dc_correction=dc_correction,
+            compute=False,
+        )
+        futures.append(acoustic_features_future)
     # extract birdnet species scores
-    log.info(f"Extracting BirdNET species probabilities")
-    birdnet_species_ddf, birdnet_species_future = birdnet_detections(
-        root_dir=root_dir,
-        files_df=files_df,
-        sites_df=sites_df,
-        outfile=birdnet_species_probs_path,
-        min_conf=min_conf,
-        compute=False,
-    )
+    if not no_birdnet:
+        log.info(f"Extracting BirdNET species probabilities")
+        birdnet_species_ddf, birdnet_species_future = birdnet_detections(
+            root_dir=root_dir,
+            config_path=config_path,
+            files_df=files_df,
+            sites_df=sites_df,
+            outfile=birdnet_species_probs_path,
+            compute=False,
+        )
+        futures.append(birdnet_species_future)
     # compute the graph
     log.info(f"Processing...")
-    dask.compute(acoustic_features_future, birdnet_species_future)
+    dask.compute(*futures)
     # and we're done!
     log.info("Pipeline complete")
     log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")
@@ -165,6 +173,11 @@ def get_base_parser():
         help="Root directory containing audio files. Defaults to /data for container builds.",
     )
     parser.add_argument(
+        '--config-path',
+        type=lambda p: Path(p).expanduser(),
+        help='/path/to/dataset/config.yaml',
+    )
+    parser.add_argument(
         '--save-dir',
         type=lambda p: Path(p).expanduser(),
         help="Target directory for results. Defaults to /results for container builds.",
@@ -173,38 +186,6 @@ def get_base_parser():
         '--sitesfile',
         type=lambda p: Path(p).expanduser(),
         help="Path to a parquet file with columns ('site_id', 'site_name',  'latitude',  'longitude',  'timezone')",
-    )
-    parser.add_argument(
-        '--dataset',
-        type=str,
-        choices=datasets.keys(),
-        help='Name of the dataset',
-    )
-    parser.add_argument(
-        '--sample-rate',
-        type=int,
-        help='Resample rate for audio',
-    )
-    parser.add_argument(
-        '--segment-duration',
-        type=float,
-        default=60.0,
-        help='Duration for chunking audio segments. Defaults to 60s. Specify -1 to use full clip.',
-    )
-    parser.add_argument(
-        '--frame',
-        type=int,
-        help='Number of audio frames for a feature frame.',
-    )
-    parser.add_argument(
-        '--hop',
-        type=int,
-        help='Number of audio frames for the hop.',
-    )
-    parser.add_argument(
-        '--n-fft',
-        type=int,
-        help='Number of audio frames for the n_fft.',
     )
     parser.add_argument(
         "--dc-correction",
@@ -217,11 +198,6 @@ def get_base_parser():
         help="Set to 1 to apply a high pass filter",
     )
     parser.add_argument(
-        "--min-conf",
-        type=float,
-        help="BirdNET confidence threshold. Defaults to 0.0 to collect all detections.",
-    )
-    parser.add_argument(
         "--threads-per-worker",
         type=int,
         help="Threads per worker",
@@ -232,25 +208,26 @@ def get_base_parser():
         action="store_true",
         help="Sets single-threaded for debugging.",
     )
+    parser.add_argument(
+        "--no-birdnet",
+        default=False,
+        action="store_true",
+    )
+    parser.add_argument(
+        "--no-indices",
+        default=False,
+        action="store_true",
+    )
     parser.set_defaults(func=main, **{
         "root_dir": "/data",
+        "config_path": "/config.yml",
         "save_dir": "/results",
-        "dataset": os.environ.get("DATASET", None),
-
         'local': os.environ.get("LOCAL", True),
         "memory": os.environ.get("MEM_PER_CPU", 0),
         "cores": os.environ.get("CORES", 0),
         "threads_per_worker": os.environ.get("THREADS_PER_WORKER", 1),
-
-        "sample_rate": os.environ.get("SAMPLE_RATE", 48_000),
-        "segment_duration": os.environ.get("SEGMENT_LEN", 60.0),
-        "frame": os.environ.get("FRAME", 2_048),
-        "hop": os.environ.get("HOP", 512),
-        'n_fft': os.environ.get("N_FFT", 2_048),
         "dc_correction": os.environ.get("DC_CORR", 0),
         "high_pass_filter": os.environ.get("HIGH_PASS_FILTER", 1),
-
-        "min_conf": os.environ.get("MIN_CONF", 0.0),
     })
     return parser
 

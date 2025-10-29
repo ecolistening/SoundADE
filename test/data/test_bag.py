@@ -89,10 +89,11 @@ def test_load_audio_from_path(file_paths, audio_params):
         assert "offset" in audio_dict, "Audio offset was not returned"
         assert "duration" in audio_dict, "Audio duration was not returned"
         assert type(audio_dict.get("audio")) == np.ndarray, "Audio was not loaded"
+        assert audio_dict.get("sr") == sr, "Sample rate is missing / incorrect"
         assert audio_dict.get("audio").shape[0] == sr * duration, "Audio was not loaded at specified sample rate"
 
 def test_extract_scalar_features_from_audio(file_paths, wavs, audio_params):
-    sr = audio_params.pop("sr")
+    sr = audio_params.pop("sr") # Remove to prevent duplicate argument
     actual = pd.DataFrame([
         extract_scalar_features_from_audio(
             {"file_path": file_path, "audio": audio, "sr": sr},
@@ -100,6 +101,7 @@ def test_extract_scalar_features_from_audio(file_paths, wavs, audio_params):
         )
         for file_path, audio in zip(file_paths, wavs)
     ])
+    import code; code.interact(local=locals())
     base_columns = ["file_path", "sr", "frame_length", "hop_length", "n_fft"]
     feature_columns = [feature.name for feature in ScalarFeatures]
     assert sorted(actual.columns) == sorted([*base_columns, *feature_columns]), "Columns missing"

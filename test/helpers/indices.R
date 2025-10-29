@@ -29,7 +29,7 @@ args <- commandArgs(trailingOnly = TRUE)
 audio_path <- args[1]
 params_path <- args[2]
 output_path <- args[3]
-files <- list.files(audio_path, pattern = "\\.wav$", full.names = TRUE)
+files <- list.files(audio_path, pattern = "\\.[wW][aA][vV]$", full.names = TRUE, recursive = TRUE)
 
 # load audio parameters
 params <- yaml::read_yaml(params_path)
@@ -47,8 +47,19 @@ print("Extracting features...")
 
 wavs = lapply(files, function(file_path) {
     wav = readWave(file_path)
-    # a warning is printed when the sample rate is the same, but we don't care
-    wav = suppressWarnings(downsample(wav, params$sr))
+    orig <- wav@samp.rate
+    tgt <- params$sr
+    if (orig %% tgt == 0) {
+      wav <- tryCatch(
+          suppressWarnings(downsample(wav, tgt)),
+          error = function(e) {
+            resamp(wav, f = orig, g = tgt, output = "Wave")
+          }
+      )
+    } else {
+      wav <- resamp(wav, f = orig, g = tgt, output = "Wave")
+    }
+    wav
 })
 
 bis = sapply(wavs, function(wav) {
@@ -121,5 +132,6 @@ df <- data.frame(
    stringsAsFactors = FALSE
 )
 
+print(df)
 # persist dataframe
 write_parquet(df, output_path)

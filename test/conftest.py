@@ -13,8 +13,12 @@ def fixtures_path() -> pathlib.Path:
     return pathlib.Path(os.path.dirname(__file__)) / "fixtures"
 
 @pytest.fixture(scope="session")
-def audio_params(fixtures_path) -> Dict[str, Any]:
-    with open(fixtures_path / "audio_params.yml", "r") as f:
+def config_path(fixtures_path):
+    return fixtures_path / "audio_params.yml"
+
+@pytest.fixture(scope="session")
+def audio_params(config_path) -> Dict[str, Any]:
+    with open(config_path, "r") as f:
         params = {}
         for k, v in yaml.safe_load(f.read()).items():
             if type(v) == list:
@@ -24,7 +28,7 @@ def audio_params(fixtures_path) -> Dict[str, Any]:
 
 @pytest.fixture(scope="session")
 def file_paths(fixtures_path) -> List[pathlib.Path]:
-    file_paths = list((fixtures_path / "audio").glob("*.wav"))
+    file_paths = list((fixtures_path / "audio").rglob("*.[wW][aA][vV]"))
     assert len(file_paths), "No files are in the fixtures test/fixtures/audio"
     return file_paths
 

@@ -30,7 +30,6 @@ import maad.sound # NB: maad's submodules need to be imported separately
 import maad.features # NB: maad's submodules need to be imported separately
 import numpy as np
 import pandas as pd
-import scipy as sp
 
 from findiff import FinDiff
 from numpy.typing import NDArray

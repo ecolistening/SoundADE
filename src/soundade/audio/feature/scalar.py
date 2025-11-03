@@ -174,24 +174,27 @@ def bioacoustic_index_soundecology(
     sr: int,
     f_min: float,
     f_max: float,
+    epsilon: float = 1e-6,
 ) -> np.float32:
     """
     Replicates soundecology implementation for testing purposes, see https://rdrr.io/cran/soundecology/src/R/bioacoust_index.R
     """
-    Sxx = Sxx**2
-    Sxx = Sxx / Sxx.max()
-    # calculate mean power spectrum
-    S_mean = np.mean(np.maximum(Sxx, 1e-10), axis=1)
-    # map to decibels
-    S_mean_db = 10 * np.log10(S_mean)
-    # extract relevant frequency bins, soundecology rounds down to drop the nyquist bin
-    df = len(S_mean_db) / (sr // 2)
-    f_min_idx, f_max_idx  = int(f_min * df), int(f_max * df)
-    S_band = S_mean_db[f_min_idx:f_max_idx]
-    # subtract the minimum decibel value to account for negative values
-    S_band_norm = S_band - S_band.min()
-    # calculate the area under the curve
-    return sum(S_band_norm) * df
+    # soundecology use seewave's spectro function with norm=TRUE which runs stdft with scale=TRUE which divides by the max
+    Sxx_norm = Sxx / np.max(Sxx)
+    # db="max0" sets the maximum dB value to zero, adding a small epsilon (1e-6)
+    Sxx_norm = np.maximum(Sxx_norm, epsilon)
+    # seewave's spectro returns a spectrogram in decibels, soundecology then uses the meandB function
+    # this is equivalent to just taking the mean before mapping to decibels
+    S_mean = np.mean(Sxx_norm, axis=1)
+    # using the frequency step size, extract relevant frequency bands
+    df = len(S_mean) / (sr / 2)
+    f_min_idx, f_max_idx = int(f_min * df), int(f_max * df)
+    S_band = S_mean[f_min_idx:f_max_idx]
+    # soundecology subtracts the minimum decibels so all values are positive
+    # this is equivalent to dividing by the minimum magnitude
+    S_band_norm = S_band / S_band.min()
+    # now we map to decibels for minimal confusion and calculate the area
+    return sum(20 * np.log10(S_band_norm) * df)
 
 def bioacoustic_index(
     y: NDArray | None = None,
@@ -214,7 +217,7 @@ def bioacoustic_index(
     fmin, fmax = bi_flim
 
     if R_compatible:
-        return maad.features.bioacoustics_index(Sxx, fn, flim=(fmin, fmax), R_compatible="soundecology")
+        return bioacoustic_index_soundecology(Sxx, sr, fmin, fmax)
     else:
         return maad.features.bioacoustics_index(Sxx, fn, flim=(fmin, fmax), R_compatible=None)
 

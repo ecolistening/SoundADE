@@ -181,20 +181,20 @@ def bioacoustic_index_soundecology(
     """
     # soundecology use seewave's spectro function with norm=TRUE which runs stdft with scale=TRUE which divides by the max
     Sxx_norm = Sxx / np.max(Sxx)
-    # db="max0" sets the maximum dB value to zero, adding a small epsilon (1e-6)
-    Sxx_norm = np.maximum(Sxx_norm, epsilon)
-    # seewave's spectro returns a spectrogram in decibels, soundecology then uses the meandB function
-    # this is equivalent to just taking the mean before mapping to decibels
-    S_mean = np.mean(Sxx_norm, axis=1)
+    # db="max0" adds a small epsilon (1e-6) to avoid division by zero
+    Sxx_norm = np.where(Sxx_norm == 0, epsilon, Sxx_norm)
+    # seewave's spectro returns a spectrogram in decibels
+    S_db = 20 * np.log10(Sxx_norm)
+    # soundecology then uses the meandB function
+    S_mean_db = 10 * np.log10(np.mean(10 ** (S_db / 10), axis=1))
     # using the frequency step size, extract relevant frequency bands
-    df = len(S_mean) / (sr / 2)
+    df = len(S_mean_db) / (sr / 2)
     f_min_idx, f_max_idx = int(f_min * df), int(f_max * df)
-    S_band = S_mean[f_min_idx:f_max_idx]
+    S_band_db = S_mean_db[f_min_idx:f_max_idx]
     # soundecology subtracts the minimum decibels so all values are positive
-    # this is equivalent to dividing by the minimum magnitude
-    S_band_norm = S_band / S_band.min()
-    # now we map to decibels for minimal confusion and calculate the area
-    return sum(20 * np.log10(S_band_norm) * df)
+    S_band_norm = S_band_db - S_band_db.min()
+    # calculate the area
+    return sum(S_band_norm * df)
 
 def bioacoustic_index(
     y: NDArray | None = None,

@@ -66,10 +66,9 @@ def test_acoustic_evenness_index(
     actual = pd.Series({file_name: fn(y=wav, **audio_params, R_compatible=True) for file_name, wav in zip(file_names, wavs)}).sort_index().astype(np.float32)
     pd.testing.assert_series_equal(expected, actual, rtol=1e-1)
 
-# NB : this is commented due to switching the maad measure as the default, because re-implementation of soundecology's approach
-# does not yield comparable results. Numerically this is from to the decibel floor value (~-120dB for our implementation but ~-68dB for soundecology),
-# resulting in very high values for the BI, though precisely they are so different I cannot figure out. Maad produces values in the right range.
-
+# # NB: Our re-implementation of soundecology's BI, as well as the maad version, produces higher values than expected.
+# # Numerically this is a result of the second normalisation step. When playing with this, I was getting minimum values at ~-78dB,
+# # while soundecology's minimum is approximately ~-65dB. This results in a different scale of values, though they are linearly correlated.
 # @pytest.mark.parametrize("fn, expected", [(bioacoustic_index, "bioacoustic_index")], indirect=["expected"])
 # def test_bioacoustic_index(
 #     file_names: List[str],
@@ -78,7 +77,7 @@ def test_acoustic_evenness_index(
 #     fn: Callable,
 #     expected: pd.Series,
 # ) -> None:
-#     actual = pd.Series({file_name: fn(y=wav, **audio_params, R_compatible=None) for file_name, wav in zip(file_names, wavs)}).sort_index().astype(np.float32)
+#     actual = pd.Series({file_name: fn(y=wav, **audio_params, R_compatible=True) for file_name, wav in zip(file_names, wavs)}).sort_index().astype(np.float32)
 #     pd.testing.assert_series_equal(expected, actual, rtol=1e-2)
 
 @pytest.mark.parametrize("fn, expected", [(spectral_flux, "spectral_flux")], indirect=["expected"],)

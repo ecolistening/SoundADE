@@ -2,7 +2,7 @@ window: hann
 frame_length: 1024
 n_fft: 1024
 hop_length: 1024
-sr: 48000
+sr: 32000
 bi_flim: [2000, 16000]
 aei_flim: [0, 20000]
 bin_step: 1000

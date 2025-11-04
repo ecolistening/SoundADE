@@ -186,16 +186,21 @@ def main(
 
     start_time = time.time()
 
-    acoustic_features(
+    _, future = acoustic_features(
         files_df=pd.read_parquet(infile),
         outfile=outfile,
         config_path=config_path,
+        compute=True,
         **kwargs,
     )
+    dask.compute(future)
+
     shutil.copy(config_path, outfile.parent / "config.yaml")
 
     log.info(f"Acoustic feature extraction complete")
     log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")
+
+    client.close()
 
 def get_base_parser():
     parser = argparse.ArgumentParser(

@@ -127,13 +127,12 @@ def main(
 
     Args:
         root_dir (str, required): Input directory containing audio files.
-        out-file (str, required): Output file path.
+        out_file (str, required): Output file path.
         sitesfile (str, optional): Sites file stores a foreign key for a sites table,
                                    where the join key is extracted from the dataset's path.
                                    Required for secondary pipeline steps: birdnet and solar.
         memory (int, optional): Memory limit for each worker in GB. Defaults to 32.
         cores (int, optional): Number of CPU cores per worker. Defaults to 8.
-        compute (bool, optional): Compute and save the parquet. Defaults to true. Returns a Dask Dataframe if false.
         debug (bool, optional): Flag to set processing to synchronous for debugging. Defaults to False.
 
     Returns:
@@ -151,16 +150,21 @@ def main(
 
     start_time = time.time()
 
-    index_audio(
+    _, future = index_audio(
         sites_ddf=dd.read_parquet(sitesfile),
         out_file=out_file,
         config_path=config_path,
+        compute=True,
         **kwargs,
     )
+    dask.compute(future)
+
     shutil.copy(config_path, out_file.parent / "config.yaml")
 
     log.info(f"File index complete")
     log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")
+
+    client.close()
 
 def get_base_parser():
     parser = argparse.ArgumentParser(

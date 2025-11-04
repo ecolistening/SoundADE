@@ -143,17 +143,21 @@ def main(
 
     start_time = time.time()
 
-    birdnet_detections(
+    _, future = birdnet_detections(
         files_df=pd.read_parquet(infile),
         sites_df=pd.read_parquet(sitesfile),
         outfile=outfile,
         config_path=config_path,
         **kwargs,
     )
+    dask.compute(future)
 
     shutil.copy(config_path, outfile.parent / "config.yaml")
+
     log.info(f"BirdNET detection extraction complete")
     log.info(f"Time taken: {str(dt.timedelta(seconds=time.time() - start_time))}")
+
+    client.close()
 
 def get_base_parser():
     parser = DaskArgumentParser(

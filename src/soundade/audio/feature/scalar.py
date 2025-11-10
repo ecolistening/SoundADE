@@ -145,14 +145,14 @@ def acoustic_evenness_index(
     hop_length: int | None = None,
     window: str | None = None,
     pad_mode: str | None = None,
-    aei_flim: Tuple[int, int] = (0, 20_000),
-    bin_step: int | None = None,
-    db_threshold: int | None = None,
+    aei_flim: Tuple[int, int] = None,
+    aei_bin_step: int | None = None,
+    aei_db_threshold: int | None = None,
     R_compatible: bool = False,
     **kwargs: Any,
 ) -> np.float32:
     assert (y is not None and sr is not None) or (S is not None)
-    assert (aei_flim is not None and bin_step is not None and db_threshold is not None)
+    assert (aei_flim is not None and aei_bin_step is not None and aei_db_threshold is not None)
 
     fmin, fmax = aei_flim
 
@@ -161,24 +161,24 @@ def acoustic_evenness_index(
         y = y - np.mean(y)
         S = spectrogram(y, sr, n_fft=sr // 10, hop_length=sr // 10, window=window, pad_mode=pad_mode)
         Sxx, _, freq, _ = S
-        return maad.features.acoustic_eveness_index(Sxx, freq, fmin=fmin, fmax=fmax, dB_threshold=db_threshold)
+        return maad.features.acoustic_eveness_index(Sxx, freq, fmin=fmin, fmax=fmax, dB_threshold=aei_db_threshold)
 
     if S is None:
         S = spectrogram(y, sr, n_fft=n_fft, hop_length=hop_length, window=window, pad_mode=pad_mode)
     Sxx, _, freq, _ = S
 
-    return maad.features.acoustic_eveness_index(Sxx, freq, fmin=fmin, fmax=fmax, bin_step=bin_step, dB_threshold=db_threshold)
+    return maad.features.acoustic_eveness_index(Sxx, freq, fmin=fmin, fmax=fmax, bin_step=aei_bin_step, dB_threshold=aei_db_threshold)
 
 def bioacoustic_index_soundecology(
     Sxx: NDArray,
-    sr: int,
-    f_min: float,
-    f_max: float,
+    fn: int,
+    flim: Tuple[float, float],
     epsilon: float = 1e-6,
 ) -> np.float32:
     """
     Replicates soundecology implementation for testing purposes, see https://rdrr.io/cran/soundecology/src/R/bioacoust_index.R
     """
+    df = fn[1] - fn[0]
     # soundecology use seewave's spectro function with norm=TRUE which runs stdft with scale=TRUE which divides by the max
     Sxx_norm = Sxx / np.max(Sxx)
     # db="max0" adds a small epsilon (1e-6) to avoid division by zero
@@ -188,13 +188,15 @@ def bioacoustic_index_soundecology(
     # soundecology then uses the meandB function
     S_mean_db = 10 * np.log10(np.mean(10 ** (S_db / 10), axis=1))
     # using the frequency step size, extract relevant frequency bands
-    df = len(S_mean_db) / (sr / 2)
-    f_min_idx, f_max_idx = int(f_min * df), int(f_max * df)
-    S_band_db = S_mean_db[f_min_idx:f_max_idx]
+    min_freq, max_freq = flim
+    min_freq_bin = int(np.argmin([abs(e - min_freq) for e in fn])) # min freq in samples (or bin)
+    max_freq_bin = int(np.ceil(np.argmin([abs(e - max_freq) for e in fn]))) # max freq in samples (or bin)
+    min_freq_bin = min_freq_bin - 1 # alternative value to follow the R code
+    S_band_db = S_mean_db[min_freq_bin:max_freq_bin]
     # soundecology subtracts the minimum decibels so all values are positive
-    S_band_norm = S_band_db - S_band_db.min()
+    S_band_norm = S_band_db - np.min(S_band_db)
     # calculate the area
-    return sum(S_band_norm * df)
+    return np.sum(S_band_norm / df)
 
 def bioacoustic_index(
     y: NDArray | None = None,
@@ -204,11 +206,12 @@ def bioacoustic_index(
     hop_length: int | None = None,
     window: str | None = None,
     pad_mode: str | None = None,
-    bi_flim: Tuple[int, int] | None = (2000, 16_000),
+    bi_flim: Tuple[int, int] | None = None,
     R_compatible: bool = False,
     **kwargs: Any,
 ) -> np.float32:
     assert (y is not None and sr is not None) or (S is not None)
+    assert bi_flim is not None
 
     if S is None:
         S = spectrogram(y, sr, n_fft=n_fft, hop_length=hop_length, window=window, pad_mode=pad_mode)
@@ -217,7 +220,7 @@ def bioacoustic_index(
     fmin, fmax = bi_flim
 
     if R_compatible:
-        return bioacoustic_index_soundecology(Sxx, sr, fmin, fmax)
+        return bioacoustic_index_soundecology(Sxx, fn, flim=(fmin, fmax))
     else:
         return maad.features.bioacoustics_index(Sxx, fn, flim=(fmin, fmax), R_compatible=None)
 

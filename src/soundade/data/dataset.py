@@ -15,17 +15,17 @@ log = logging.getLogger(__name__)
 
 DEFAULT_PARAMS = dict(
     sample_rate=48_000,
+    fcut=300,
     n_fft=2048,
     frame_length=2048,
     hop_length=1024,
     min_conf=0.0,
     segment_duration=60.0,
-    bin_step=500,
-    db_threshold=-47,
-    R_compatible=False,
-    fcut=300,
-    bi_flim=[2000, 16000],
     aei_flim=[0, 20000],
+    aei_bin_step=500,
+    aei_db_threshold=-47,
+    bi_flim=[2000, 8000],
+    R_compatible=False,
 )
 
 @attr.define
@@ -82,19 +82,35 @@ class Dataset:
             ))
         },
     )
-    bin_step: float = attr.field(
-        default=DEFAULT_PARAMS["bin_step"],
+    bi_flim: float = attr.field(
+        default=DEFAULT_PARAMS["bi_flim"],
         metadata={
             "on_default": lambda: logger.warning((
-                f"No bin step for the AEI provided. Defaulting to bin_step={DEFAULT_PARAMS['bin_step']}."
+                f"BI frequeny bounds not set, defaulting to {DEFAULT_PARAMS['bi_flim']}"
             ))
         },
     )
-    db_threshold: float = attr.field(
-        default=DEFAULT_PARAMS["db_threshold"],
+    aei_flim: float = attr.field(
+        default=DEFAULT_PARAMS["aei_flim"],
         metadata={
             "on_default": lambda: logger.warning((
-                f"No dB threshold for the AEI provided. Defaulting to db_threshold={DEFAULT_PARAMS['db_threshold']}."
+                f"AEI frequeny bounds not set, defaulting to {DEFAULT_PARAMS['aei_flim']}"
+            ))
+        },
+    )
+    aei_bin_step: float = attr.field(
+        default=DEFAULT_PARAMS["aei_bin_step"],
+        metadata={
+            "on_default": lambda: logger.warning((
+                f"No bin step for the AEI provided. Defaulting to bin_step={DEFAULT_PARAMS['aei_bin_step']}."
+            ))
+        },
+    )
+    aei_db_threshold: float = attr.field(
+        default=DEFAULT_PARAMS["aei_db_threshold"],
+        metadata={
+            "on_default": lambda: logger.warning((
+                f"No dB threshold for the AEI provided. Defaulting to db_threshold={DEFAULT_PARAMS['aei_db_threshold']}."
             ))
         },
     )
@@ -114,22 +130,6 @@ class Dataset:
             ))
         },
     )
-    bi_flim: float = attr.field(
-        default=DEFAULT_PARAMS["bi_flim"],
-        metadata={
-            "on_default": lambda: logger.warning((
-                f"BI frequeny bounds not set, defaulting to {DEFAULT_PARAMS['bi_flim']}"
-            ))
-        },
-    )
-    aei_flim: float = attr.field(
-        default=DEFAULT_PARAMS["aei_flim"],
-        metadata={
-            "on_default": lambda: logger.warning((
-                f"AEI frequeny bounds not set, defaulting to {DEFAULT_PARAMS['aei_flim']}"
-            ))
-        },
-    )
 
     @classmethod
     def from_config_path(cls, config_path: Path) -> Dataset:
@@ -143,13 +143,13 @@ class Dataset:
             "n_fft": self.n_fft,
             "hop_length": self.hop_length,
             "frame_length": self.frame_length,
-            "bin_step": self.bin_step,
-            "db_threshold": self.db_threshold,
-            "R_compatible": self.R_compatible,
-            "bi_flim": self.bi_flim,
             "aei_flim": self.aei_flim,
-            "compatibility": "seewave" if self.R_compatible else "QUT",
+            "aei_bin_step": self.aei_bin_step,
+            "aei_db_threshold": self.aei_db_threshold,
+            "bi_flim": self.bi_flim,
             "window": "hann",
+            "compatibility": "seewave" if self.R_compatible else "QUT",
+            "R_compatible": self.R_compatible,
         }
 
     @property

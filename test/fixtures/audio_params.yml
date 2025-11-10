@@ -3,7 +3,8 @@ frame_length: 1024
 n_fft: 1024
 hop_length: 1024
 sr: 32000
-bi_flim: [2000, 16000]
+bi_flim: [2000, 8000]
 aei_flim: [0, 20000]
+aei_bin_step: 500
+aei_db_threshold: -47
 bin_step: 1000
-db_threshold: -50

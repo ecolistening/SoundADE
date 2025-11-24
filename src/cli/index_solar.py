@@ -49,6 +49,7 @@ def index_solar(
     outfile: str | Path,
     partition_size: int = None,
     npartitions: int = None,
+    compute: bool = False,
 ) -> Tuple[dd.DataFrame | pd.DataFrame, dd.DataFrame | pd.DataFrame, dd.Scalar | None, dd.Scalar | None]:
     assert sites_ddf is not None, "Site-specific information (latitude / longitude) is required to extract solar data. See instructions in the README."
 

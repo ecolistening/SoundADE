@@ -5,7 +5,7 @@
 #SBATCH --mail-user $USER@sussex.ac.uk
 #SBATCH --mail-type=ALL
 #SBATCH --ntasks=1
-#SBATCH --partition=general
+#SBATCH --partition=long
 
 singularity run --env-file .env \
                 --bind $DATA_PATH:/data \

@@ -57,9 +57,9 @@ def index_audio(
 
     log.info("Recursively discovering audio files...")
 
-    wavs = root_dir.rglob("*.[wW][aA][vV]")
-    mp3s = root_dir.rglob("*.[mM][pP]3")
-    flacs = root_dir.rglob("*.[fF][lL][aA][cC]")
+    wavs = root_dir.rglob("[!.]*.[wW][aA][vV]")
+    mp3s = root_dir.rglob("[!.]*.[mM][pP]3")
+    flacs = root_dir.rglob("[!.]*.[fF][lL][aA][cC]")
     file_paths = list(itertools.chain(wavs, mp3s, flacs))
     assert len(file_paths), f"No audio files found at {root_dir}"
     file_paths = [file_path.relative_to(root_dir) for file_path in file_paths]

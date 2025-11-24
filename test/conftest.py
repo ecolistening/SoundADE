@@ -28,7 +28,7 @@ def audio_params(config_path) -> Dict[str, Any]:
 
 @pytest.fixture(scope="session")
 def file_paths(fixtures_path) -> List[pathlib.Path]:
-    file_paths = list((fixtures_path / "audio").rglob("*.[wW][aA][vV]"))
+    file_paths = list((fixtures_path / "audio" / "SO").rglob("*.[wW][aA][vV]"))
     assert len(file_paths), "No files are in the fixtures test/fixtures/audio"
     return file_paths
 

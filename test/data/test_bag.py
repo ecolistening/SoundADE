@@ -101,7 +101,6 @@ def test_extract_scalar_features_from_audio(file_paths, wavs, audio_params):
         )
         for file_path, audio in zip(file_paths, wavs)
     ])
-    import code; code.interact(local=locals())
     base_columns = ["file_path", "sr", "frame_length", "hop_length", "n_fft"]
     feature_columns = [feature.name for feature in ScalarFeatures]
     assert sorted(actual.columns) == sorted([*base_columns, *feature_columns]), "Columns missing"

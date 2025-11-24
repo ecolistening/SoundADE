@@ -73,7 +73,7 @@ bis = sapply(wavs, function(wav) {
 aeis = sapply(wavs, function(wav) {
     # annoyingly the soundecology package dumps to the console
     invisible(capture.output({
-      aei <<- acoustic_evenness(wav, max_freq = params$aei_flim[[2]], freq_step = params$bin_step, db_threshold = params$db_threshold)
+      aei <<- acoustic_evenness(wav, max_freq = params$aei_flim[[2]], freq_step = params$aei_bin_step, db_threshold = params$aei_db_threshold)
     }))
     aei$aei_left
 })

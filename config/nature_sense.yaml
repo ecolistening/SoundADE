@@ -10,3 +10,4 @@ bi_flim: [2000, 8000]
 aei_flim: [0, 20000]
 aei_bin_step: 500
 aei_db_threshold: -47
+R_compatible: true

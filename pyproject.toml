@@ -1,12 +1,14 @@
 [project]
 name="soundade"
-version="0.0.1"
+version="1.1.0"
 description="soundade library files"
 readme="README.md"
 authors=[
-    {name = "Nicolas Seymour-Smith", email = "nrs23@sussex.ac.uk"},
-    {name = "Kieran Gibb", email = "k.a.gibb@sussex.ac.uk"},
     {name = "David Kadish", email = "david.kadish@mau.se"},
+    {name = "Ivor Simpson", email = "I.Simpson@sussex.ac.uk"},
+    {name = "Alice Eldridge", email = "alicee@sussex.ac.uk"},
+    {name = "Kieran Gibb", email = "k.a.gibb@sussex.ac.uk"},
+    {name = "Nicolas Seymour-Smith", email = "nrs23@sussex.ac.uk"},
 ]
 requires-python = ">=3.10"
 dependencies = [

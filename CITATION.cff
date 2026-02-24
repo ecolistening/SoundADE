@@ -1,0 +1,45 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: SoundADE
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Ivor
+    family-names: Simpson
+    email: I.Simpson@sussex.ac.uk
+    affiliation: University of Sussex
+    orcid: 'https://orcid.org/0000-0001-5605-6626'
+  - given-names: Alice
+    family-names: Eldridge
+    email: alicee@sussex.ac.uk
+    affiliation: University of Sussex
+    orcid: 'https://orcid.org/0000-0001-7093-2143'
+  - given-names: David
+    family-names: Kadish
+    affiliation: 'Malmö University '
+    email: david.kadish@mau.se
+    orcid: 'https://orcid.org/0000-0003-3573-2917'
+  - given-names: Kieran
+    family-names: Gibb
+    affiliation: University of Sussex
+    email: k.a.gibb@sussex.ac.uk
+    orcid: 'https://orcid.org/0000-0003-1468-547X'
+  - given-names: Nicolas
+    family-names: Seymour-Smith
+    email: nrs23@sussex.ac.uk
+    affiliation: University of Sussex
+    orcid: 'https://orcid.org/0009-0008-2177-2153'
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.18756138
+    description: The version DOI for this version of the software
+repository-code: 'https://github.com/ecolistening/SoundADE'
+url: 'https://echodash.co.uk/'
+license: GPL-3.0
+commit: 5c79550f5317322567304706f2026facd70c4552
+version: 1.1.0
+date-released: '2024-02-24'

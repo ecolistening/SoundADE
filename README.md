@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/679191288.svg)](https://doi.org/10.5281/zenodo.18756137)
+
 # SoundADE
 Acoustic Descriptor Extraction tool for processing sound on High Performance Computing clusters.
 

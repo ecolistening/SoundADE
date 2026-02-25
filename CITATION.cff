@@ -4,41 +4,92 @@
 cff-version: 1.2.0
 title: SoundADE
 message: >-
-  If you use this software, please cite it using the
+  If you use this software, please cite it using the  
   metadata from this file.
 type: software
 authors:
   - given-names: Ivor
     family-names: Simpson
     email: I.Simpson@sussex.ac.uk
-    affiliation: University of Sussex
+    affiliation: >-
+      Department of Informatics, University of Sussex,
+      Brighton, UK
     orcid: 'https://orcid.org/0000-0001-5605-6626'
-  - given-names: Alice
-    family-names: Eldridge
-    email: alicee@sussex.ac.uk
-    affiliation: University of Sussex
-    orcid: 'https://orcid.org/0000-0001-7093-2143'
-  - given-names: David
-    family-names: Kadish
-    affiliation: 'Malmö University '
-    email: david.kadish@mau.se
-    orcid: 'https://orcid.org/0000-0003-3573-2917'
   - given-names: Kieran
     family-names: Gibb
-    affiliation: University of Sussex
+    affiliation: >-
+      Department of Informatics, University of Sussex,
+      Brighton, UK
     email: k.a.gibb@sussex.ac.uk
     orcid: 'https://orcid.org/0000-0003-1468-547X'
+  - given-names: David
+    family-names: Kadish
+    affiliation: >-
+      School of Arts and Communication, University of Malmo,
+      Sweden
+    email: david.kadish@mau.se
+    orcid: 'https://orcid.org/0000-0003-3573-2917'
+  - given-names: Lukas
+    family-names: Gunthermann
+    affiliation: University of Sussex
+  - given-names: Chris
+    family-names: Andrews
+    affiliation: >-
+      UK Centre for Ecology & Hydrology, Edinburgh,
+      Edinburgh, United Kingdom
+  - family-names: Carruthers-Jones
+    given-names: 'Jonathan '
+    affiliation: >-
+      Faculty of Agriculture and Forestry, University of
+      Helsinki, Helsinki, Finland
+  - given-names: Jan
+    family-names: Dick
+    affiliation: >-
+      School of Arts and Communication, University of Malmo,
+      Sweden
+  - given-names: Patrice
+    family-names: Guyot
+    affiliation: >-
+      EuroMov Digital Health in Motion, University of
+      Montpellier, IMT Mines Ales, Ales, France.
+  - given-names: Paul
+    family-names: Petry
+    affiliation: >-
+      Faculty of Agriculture and Forestry, University of
+      Helsinki, Helsinki, Finland
+  - given-names: Christopher
+    family-names: Sandom
+    affiliation: >-
+      Department of Evolution and Ecology, University of
+      Sussex, Brighton, UK
+  - given-names: James
+    family-names: Whitehead
+    affiliation: >-
+      Department of Evolution and Ecology, University of
+      Sussex, Brighton, UK
   - given-names: Nicolas
     family-names: Seymour-Smith
     email: nrs23@sussex.ac.uk
-    affiliation: University of Sussex
+    affiliation: >-
+      Sussex Digital Humanities Lab, Department of
+      Informatics, University of Sussex, Brighton, UK
     orcid: 'https://orcid.org/0009-0008-2177-2153'
+  - given-names: Alice
+    family-names: Eldridge
+    email: alicee@sussex.ac.uk
+    affiliation: >-
+      Department of Music, School for Progressive Futures,
+      University of Sussex, Brighton, UK 
+    orcid: 'https://orcid.org/0000-0001-7093-2143'
 identifiers:
   - type: doi
     value: 10.5281/zenodo.18756138
     description: The version DOI for this version of the software
 repository-code: 'https://github.com/ecolistening/SoundADE'
 url: 'https://echodash.co.uk/'
+abstract: >-
+  SoundADE: Acoustic Descriptor Extraction tool for
+  processing sound on High Performance Computing cluster
 license: GPL-3.0
 commit: 5c79550f5317322567304706f2026facd70c4552
 version: 1.1.0
